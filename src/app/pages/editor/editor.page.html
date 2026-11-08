@@ -1,0 +1,166 @@
+@if (loaded()) {
+  <div class="editor">
+    <header class="top">
+      <a class="back" routerLink="/patrones">Mis patrones</a>
+      <label class="name">
+        <span class="visually-hidden">Nombre del patrón</span>
+        <input
+          [value]="store.name()"
+          maxlength="100"
+          (keydown.enter)="$any($event.target).blur()"
+          (blur)="rename($any($event.target).value)"
+        />
+      </label>
+      <p
+        class="status"
+        [class.dirty]="store.saveState() === 'dirty'"
+        [class.error]="store.saveState() === 'error'"
+        role="status"
+      >
+        {{ status() }}
+      </p>
+      <div class="spacer"></div>
+      <button
+        class="btn quiet small"
+        type="button"
+        (click)="store.undo()"
+        [disabled]="!store.history.canUndo()"
+        title="Ctrl + Z"
+      >
+        Deshacer
+      </button>
+      <button
+        class="btn quiet small"
+        type="button"
+        (click)="store.redo()"
+        [disabled]="!store.history.canRedo()"
+        title="Ctrl + Shift + Z"
+      >
+        Rehacer
+      </button>
+      <details class="export">
+        <summary class="btn small">Exportar</summary>
+        <div class="menu">
+          <button type="button" (click)="exportSvg()">
+            SVG a tamaño real<small>Para Inkscape o corte láser</small>
+          </button>
+          <button type="button" (click)="exportJson()">
+            JSON<small>Copia de seguridad del diseño</small>
+          </button>
+        </div>
+      </details>
+      <button
+        class="btn primary small"
+        type="button"
+        (click)="save()"
+        [disabled]="!store.dirty() || store.saving()"
+        title="Ctrl + S"
+      >
+        Guardar
+      </button>
+    </header>
+
+    @if (notice(); as message) {
+      <p class="notice" role="status">
+        {{ message }}
+        <button class="btn quiet small" type="button" (click)="notice.set(null)">Cerrar</button>
+      </p>
+    }
+
+    <app-tools class="tools" />
+    <app-stage class="stage" />
+
+    <aside class="side">
+      <div class="tabs" role="tablist" aria-label="Paneles">
+        @for (item of tabs; track item.id) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'tab-' + item.id"
+            [attr.aria-selected]="tab() === item.id"
+            [attr.aria-controls]="'panel-' + item.id"
+            (click)="tab.set(item.id)"
+          >
+            {{ item.label }}
+          </button>
+        }
+      </div>
+      <div
+        class="panel"
+        role="tabpanel"
+        [id]="'panel-' + tab()"
+        [attr.aria-labelledby]="'tab-' + tab()"
+      >
+        @switch (tab()) {
+          @case ('piece') {
+            <app-inspector />
+          }
+          @case ('ai') {
+            <app-ai-panel />
+          }
+          @case ('preview') {
+            <app-preview />
+          }
+          @case ('versions') {
+            <app-versions
+              [versions]="versions()"
+              (saveRequested)="save($event)"
+              (restoreRequested)="restore($event)"
+            />
+          }
+        }
+      </div>
+    </aside>
+
+    <footer class="bottom">
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button class="btn quiet small" type="button" (click)="zoomOut()" aria-label="Alejar">
+          −
+        </button>
+        <span class="value">{{ zoomPercent() }} %</span>
+        <button class="btn quiet small" type="button" (click)="zoomIn()" aria-label="Acercar">
+          +
+        </button>
+        <button class="btn quiet small" type="button" (click)="fit()">Ajustar</button>
+      </div>
+      <span
+        >{{ store.document().shapes.length }} piezas, {{ store.document().width }} ×
+        {{ store.document().height }} mm</span
+      >
+      <span
+        class="inp"
+        [attr.data-rating]="inp.rating()"
+        title="Interaction to Next Paint: el tiempo desde tu clic o tecla hasta que la pantalla responde. Bueno: 200 ms o menos."
+      >
+        <span class="dot"></span>{{ inpLabel() }}
+      </span>
+    </footer>
+  </div>
+} @else {
+  <main class="loading">
+    @if (loadError(); as message) {
+      <p class="error-text" role="alert">{{ message }}</p>
+      <div class="row">
+        <button class="btn" type="button" (click)="load()">Reintentar</button>
+        <a class="btn primary" routerLink="/patrones">Ir a mis patrones</a>
+      </div>
+    } @else {
+      <p aria-live="polite">Abriendo el patrón…</p>
+    }
+  </main>
+}
+
+<dialog #conflict aria-labelledby="conflict-title">
+  <div class="conflict">
+    <h2 id="conflict-title">Alguien guardó primero</h2>
+    <p>{{ conflictMessage() }}</p>
+    <div class="choices">
+      <button class="btn primary" type="button" (click)="saveAsCopy()">
+        Guardar mis cambios como un patrón nuevo
+      </button>
+      <button class="btn" type="button" (click)="reloadLatest()">
+        Descartar mis cambios y abrir la última versión
+      </button>
+    </div>
+  </div>
+</dialog>
