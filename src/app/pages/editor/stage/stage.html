@@ -1,0 +1,21 @@
+<div
+  #viewport
+  class="viewport"
+  tabindex="0"
+  role="application"
+  aria-roledescription="mesa de diseño"
+  [attr.aria-label]="'Mesa de diseño. ' + hint()"
+  [style.cursor]="cursor()"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)"
+  (contextmenu)="$event.preventDefault()"
+>
+  <div #sheet class="sheet" [style.width.px]="sheetWidth()" [style.height.px]="sheetHeight()">
+    <canvas #background class="layer"></canvas>
+    <canvas #shapes class="layer"></canvas>
+    <canvas #interaction class="layer"></canvas>
+  </div>
+  <p class="hint">{{ hint() }}</p>
+</div>

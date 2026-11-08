@@ -1,0 +1,65 @@
+:host {
+  display: block;
+  position: relative;
+  min-height: 0;
+}
+
+.viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  background-color: var(--mat);
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.14) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size:
+    100px 100px,
+    100px 100px,
+    20px 20px,
+    20px 20px;
+
+  &:focus-visible {
+    outline: 3px solid var(--chalk);
+    outline-offset: -3px;
+  }
+}
+
+.sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.25),
+    0 10px 30px rgb(0 0 0 / 0.28);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  background: rgb(20 36 30 / 0.7);
+  color: #e9f0ec;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .hint {
+    display: none;
+  }
+}
