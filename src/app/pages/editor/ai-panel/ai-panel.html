@@ -1,0 +1,190 @@
+<section class="block">
+  <h3>Colores desde una foto</h3>
+  <p class="muted">
+    Sube una foto de tus telas o hilos. Un algoritmo de agrupamiento (k-means) encuentra sus colores
+    principales y cuánto ocupa cada uno.
+  </p>
+  <div class="row">
+    <label class="btn small upload">
+      <input
+        class="visually-hidden"
+        type="file"
+        accept="image/*"
+        (change)="onPhoto($event)"
+        [disabled]="paletteBusy()"
+      />
+      {{ paletteBusy() ? 'Analizando…' : photo() ? 'Otra foto' : 'Subir foto' }}
+    </label>
+    <label class="inline">
+      Colores
+      <select [(ngModel)]="colors" name="colors">
+        @for (n of [3, 4, 5, 6, 7, 8]; track n) {
+          <option [ngValue]="n">{{ n }}</option>
+        }
+      </select>
+    </label>
+  </div>
+  @if (paletteError(); as message) {
+    <p class="error-text" role="alert">{{ message }}</p>
+  }
+  @if (store.palette().length) {
+    <div class="palette">
+      @if (photo(); as src) {
+        <img [src]="src" alt="Foto analizada" />
+      }
+      <ul>
+        @for (color of store.palette(); track color.hex) {
+          <li>
+            <button
+              type="button"
+              (click)="useColor(color.hex)"
+              [attr.aria-label]="'Usar ' + color.hex"
+            >
+              <span class="chip" [style.background]="color.hex"></span>
+              <span class="share" [style.width.%]="color.share * 100"></span>
+              <small>{{ asPercent(color.share) }} %</small>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+    <p class="muted small">Toca un color para pintar la pieza elegida.</p>
+  }
+</section>
+
+<section class="block">
+  <h3>Variaciones del diseño</h3>
+  <p class="muted">
+    Una búsqueda evolutiva prueba cientos de combinaciones con esa paleta, moviendo y girando un
+    poco las piezas, y se queda con las que mejor puntúan en equilibrio, contraste y piezas sin
+    encimar.
+  </p>
+  <button
+    class="btn small primary"
+    type="button"
+    (click)="generate()"
+    [disabled]="variationsBusy() || !store.palette().length || !store.document().shapes.length"
+  >
+    {{ variationsBusy() ? 'Buscando…' : variations() ? 'Buscar otras' : 'Generar 4 variaciones' }}
+  </button>
+  @if (!store.palette().length) {
+    <p class="muted small">Primero saca los colores de una foto.</p>
+  }
+  @if (variationsError(); as message) {
+    <p class="error-text" role="alert">{{ message }}</p>
+  }
+  @if (variations(); as result) {
+    <p class="small">
+      Tu diseño actual puntúa <strong>{{ asPercent(result.original.total) }}</strong> de 100.
+    </p>
+    <ul class="variations">
+      @for (variation of result.variations; track $index) {
+        <li>
+          <app-thumbnail
+            class="thumb"
+            [document]="variation.document"
+            [size]="160"
+            [label]="'Variación ' + ($index + 1)"
+          />
+          <div class="score">
+            <strong>{{ asPercent(variation.score.total) }}</strong>
+            <span class="delta"
+              >+{{ asPercent(variation.score.total - result.original.total) }}</span
+            >
+          </div>
+          <dl>
+            @for (criterion of criteria; track criterion.key) {
+              <div>
+                <dt>{{ criterion.label }}</dt>
+                <dd><span [style.width.%]="variation.score[criterion.key] * 100"></span></dd>
+              </div>
+            }
+          </dl>
+          <button class="btn small" type="button" (click)="useVariation(variation.document)">
+            Usar esta
+          </button>
+        </li>
+      }
+    </ul>
+    <p class="muted small">
+      Puedes deshacer con Ctrl + Z. El puntaje mide reglas de diseño, no el gusto: decides tú.
+    </p>
+  }
+</section>
+
+<section class="block">
+  <h3>Plan de corte</h3>
+  <p class="muted">
+    Acomoda las piezas en el rollo para gastar menos material y ordena los cortes para que la
+    cuchilla o el láser recorra menos camino.
+  </p>
+  <div class="row">
+    <label class="inline">
+      Ancho del rollo
+      <input type="number" min="10" max="5000" [(ngModel)]="rollWidth" name="roll" />
+      mm
+    </label>
+    <label class="inline">
+      Margen
+      <input type="number" min="0" max="50" [(ngModel)]="spacing" name="spacing" />
+      mm
+    </label>
+  </div>
+  <button
+    class="btn small primary"
+    type="button"
+    (click)="optimize()"
+    [disabled]="layoutBusy() || !store.document().shapes.length"
+  >
+    {{ layoutBusy() ? 'Calculando…' : 'Calcular plan de corte' }}
+  </button>
+  @if (layoutError(); as message) {
+    <p class="error-text" role="alert">{{ message }}</p>
+  }
+  @if (layout(); as plan) {
+    @if (outdated()) {
+      <p class="warn small" role="status">
+        El diseño cambió después de calcular. Vuelve a calcular para actualizar el plan.
+      </p>
+    }
+    <dl class="stats">
+      <div>
+        <dt>Material usado</dt>
+        <dd>
+          {{ mm(plan.usedLength) }} de rollo
+          <small
+            >antes {{ mm(plan.baselineLength) }},
+            {{ saving(plan.baselineLength, plan.usedLength) }} % menos</small
+          >
+        </dd>
+      </div>
+      <div>
+        <dt>Desperdicio</dt>
+        <dd>
+          {{ percent(plan.wastePercent) }}
+          <small>antes {{ percent(plan.baselineWastePercent) }}</small>
+        </dd>
+      </div>
+      <div>
+        <dt>Recorrido de corte</dt>
+        <dd>
+          {{ mm(plan.cutTravel) }}
+          <small
+            >antes {{ mm(plan.baselineCutTravel) }},
+            {{ saving(plan.baselineCutTravel, plan.cutTravel) }} % menos</small
+          >
+        </dd>
+      </div>
+    </dl>
+    <canvas
+      #plan
+      class="plan"
+      role="img"
+      aria-label="Plan de corte: piezas acomodadas en el rollo, numeradas en el orden de corte"
+    ></canvas>
+    <p class="muted small">
+      "Antes" es colocar las piezas en el orden en que las dibujaste, sin girarlas, y cortarlas en
+      ese orden. Los números marcan el orden de corte desde la esquina del rollo.
+    </p>
+  }
+</section>
