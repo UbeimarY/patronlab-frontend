@@ -1,0 +1,120 @@
+<header class="bar">
+  <a class="brand" routerLink="/patrones">PatronLab</a>
+  <span class="who">{{ session.user()?.fullName }}</span>
+  <button class="btn quiet small" type="button" (click)="signOut()">Salir</button>
+</header>
+
+<main class="page">
+  <div class="heading">
+    <div>
+      <h1>Mis patrones</h1>
+      <p class="muted">Cada vez que guardas se crea una versión que puedes recuperar.</p>
+    </div>
+    <button class="btn primary" type="button" (click)="openNew()">Nuevo patrón</button>
+  </div>
+
+  @if (loadError(); as message) {
+    <p class="error-text" role="alert">
+      {{ message }} <button class="btn small" type="button" (click)="load()">Reintentar</button>
+    </p>
+  }
+
+  @if (patterns(); as list) {
+    @if (list.length === 0) {
+      <section class="empty">
+        <h2>Tu mesa de corte está vacía</h2>
+        <p class="muted">
+          Empieza con una plantilla, como el cojín de hojas, y cámbiala a tu gusto.
+        </p>
+        <button class="btn primary" type="button" (click)="openNew()">
+          Crear mi primer patrón
+        </button>
+      </section>
+    } @else {
+      <ul class="grid">
+        @for (pattern of list; track pattern.id) {
+          <li class="card">
+            <a class="open" [routerLink]="['/patrones', pattern.id]">
+              <app-thumbnail
+                class="thumb"
+                [document]="pattern.document"
+                [label]="'Vista de ' + pattern.name"
+              />
+              <span class="name">{{ pattern.name }}</span>
+            </a>
+            <p class="meta">
+              {{ materialOf(pattern.material).label }}, versión {{ pattern.currentVersion }},
+              {{ timeAgo(pattern.updatedAt) }}
+            </p>
+            <div class="actions">
+              @if (confirmingDelete() === pattern.id) {
+                <span class="confirm">¿Borrar con todas sus versiones?</span>
+                <button class="btn small danger" type="button" (click)="remove(pattern)">
+                  Borrar
+                </button>
+                <button class="btn small quiet" type="button" (click)="confirmingDelete.set(null)">
+                  Cancelar
+                </button>
+              } @else {
+                <button
+                  class="btn small quiet danger"
+                  type="button"
+                  (click)="confirmingDelete.set(pattern.id)"
+                >
+                  Borrar
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  } @else if (!loadError()) {
+    <p class="muted" aria-live="polite">Cargando tus patrones…</p>
+  }
+</main>
+
+<dialog #dialog aria-labelledby="new-title" (close)="createError.set(null)">
+  <form class="new" (ngSubmit)="create()" #form="ngForm">
+    <h2 id="new-title">Nuevo patrón</h2>
+    <label class="field">
+      <span>Nombre</span>
+      <input
+        name="name"
+        [(ngModel)]="name"
+        required
+        maxlength="100"
+        placeholder="Cojín para la feria"
+      />
+    </label>
+    <label class="field">
+      <span>Material</span>
+      <select name="material" [(ngModel)]="material">
+        @for (option of materials; track option.id) {
+          <option [value]="option.id">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+    <fieldset>
+      <legend>Empezar desde</legend>
+      @for (option of templates; track option.id) {
+        <label class="template">
+          <input type="radio" name="template" [value]="option.id" [(ngModel)]="template" />
+          <span>
+            <strong>{{ option.label }}</strong>
+            <small>{{ option.description }}</small>
+          </span>
+        </label>
+      }
+    </fieldset>
+    @if (createError(); as message) {
+      <p class="error-text" role="alert">{{ message }}</p>
+    }
+    <div class="dialog-actions">
+      <button class="btn quiet" type="button" (click)="closeNew()">Cancelar</button>
+      <button class="btn primary" type="submit" [disabled]="form.invalid || creating()">
+        {{ creating() ? 'Creando…' : 'Crear y abrir' }}
+      </button>
+    </div>
+  </form>
+</dialog>

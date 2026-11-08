@@ -1,0 +1,173 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 24px;
+  background: var(--mat);
+  color: #f4f7f5;
+
+  .btn {
+    color: inherit;
+    &:hover {
+      background: rgb(255 255 255 / 0.12);
+    }
+  }
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.who {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 24px 4rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.empty {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  padding: 2.5rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1.5rem 1.25rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.open {
+  display: grid;
+  gap: 0.5rem;
+  text-decoration: none;
+
+  &:hover .thumb {
+    border-color: var(--mat);
+  }
+}
+
+.thumb {
+  aspect-ratio: 1;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--mat);
+  transition: border-color 0.15s;
+}
+
+.name {
+  font-weight: 650;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-left: -0.6rem;
+}
+
+.confirm {
+  font-size: 0.85rem;
+  padding-left: 0.6rem;
+}
+
+.new {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+
+  legend {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+}
+
+.template {
+  display: flex;
+  gap: 0.6rem;
+  align-items: start;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+  }
+
+  input {
+    margin-top: 0.25rem;
+  }
+
+  span {
+    display: grid;
+  }
+
+  small {
+    color: var(--muted);
+  }
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .page,
+  .bar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
