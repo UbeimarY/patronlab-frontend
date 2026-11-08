@@ -1,0 +1,228 @@
+/* PatronLab: a self-healing cutting mat (green, ruled in millimeters), paper panels,
+   and tailor's chalk yellow reserved for what is selected. */
+
+:root {
+  color-scheme: light;
+  --paper: #fafaf8;
+  --paper-2: #f0f2f0;
+  --ink: #1d2321;
+  --muted: #56635e;
+  --line: #d6ddd9;
+  --mat: #2d5a4a;
+  --mat-deep: #23493c;
+  --primary: #24493c;
+  --primary-hover: #1a382e;
+  --primary-ink: #ffffff;
+  --chalk: #f0c23b;
+  --danger: #a8303a;
+  --good: #2f7d4f;
+  --warn: #9a6200;
+  --focus: #1f6feb;
+  --radius: 6px;
+  --font-ui: 'Schibsted Grotesk Variable', system-ui, sans-serif;
+  --font-display: 'Young Serif', Georgia, serif;
+}
+
+@mixin dark {
+  color-scheme: dark;
+  --paper: #141917;
+  --paper-2: #1b221f;
+  --ink: #e6ebe8;
+  --muted: #9aa8a2;
+  --line: #2e3834;
+  --primary: #8cc7a9;
+  --primary-hover: #a6d6bd;
+  --primary-ink: #0d1411;
+  --danger: #f08a8f;
+  --good: #7fd19f;
+  --warn: #f0b85a;
+  --focus: #79b8ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark;
+  }
+}
+:root[data-theme='dark'] {
+  @include dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--paper-2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-ink);
+
+    &:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+  }
+
+  &.quiet {
+    border-color: transparent;
+    background: transparent;
+
+    &:hover:not(:disabled) {
+      background: var(--paper-2);
+    }
+  }
+
+  &.danger {
+    color: var(--danger);
+  }
+
+  &.small {
+    min-height: 30px;
+    padding: 0 0.6rem;
+    font-size: 0.875rem;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+
+  > span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 38px;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+
+    &:focus-visible {
+      outline-offset: 0;
+    }
+  }
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  max-width: min(560px, calc(100vw - 32px));
+  width: 100%;
+
+  &::backdrop {
+    background: rgb(15 25 21 / 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
