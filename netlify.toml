@@ -1,0 +1,33 @@
+[build]
+  command = "npm ci --ignore-scripts && npm run build"
+  publish = "dist/patronlab-frontend/browser"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Every route is handled by the Angular router.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers for every page. img-src allows data: and blob: for the photo
+# preview, which never leaves the browser except as the reduced image sent to the API.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://patronlab-api-ubeimar.fly.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Hashed bundles never change: cache them for a year.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
