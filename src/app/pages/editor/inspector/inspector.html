@@ -1,0 +1,123 @@
+@if (shape(); as current) {
+  <section class="block">
+    <div class="title">
+      <h3>{{ labels[current.kind] }}</h3>
+      <button class="btn quiet small" type="button" (click)="store.selectedId.set(null)">
+        Listo
+      </button>
+    </div>
+    <div class="numbers">
+      @for (field of fields; track field.key) {
+        <label class="number">
+          <span>{{ field.label }}</span>
+          <input
+            type="number"
+            inputmode="decimal"
+            step="1"
+            [value]="current[field.key]"
+            (change)="setNumber(field.key, $any($event.target).value)"
+          />
+          <small>{{ field.unit }}</small>
+        </label>
+      }
+    </div>
+  </section>
+
+  <section class="block">
+    <h3>Color</h3>
+    <div class="colors">
+      <input
+        class="picker"
+        type="color"
+        aria-label="Elegir color de la pieza"
+        [value]="current.fill"
+        (change)="setFill($any($event.target).value)"
+      />
+      @for (color of swatches(); track color) {
+        <button
+          class="swatch"
+          type="button"
+          [style.background]="color"
+          [class.active]="color === current.fill"
+          [attr.aria-label]="'Usar color ' + color"
+          (click)="setFill(color)"
+        ></button>
+      }
+    </div>
+  </section>
+
+  <section class="block actions">
+    <button class="btn small" type="button" (click)="store.reorderSelected('front')">
+      Traer al frente
+    </button>
+    <button class="btn small" type="button" (click)="store.reorderSelected('back')">
+      Enviar atrás
+    </button>
+    <button class="btn small" type="button" (click)="store.duplicateSelected()">Duplicar</button>
+    <button class="btn small danger" type="button" (click)="store.deleteSelected()">Borrar</button>
+  </section>
+} @else {
+  <section class="block">
+    <h3>Pieza de material</h3>
+    <div class="numbers">
+      <label class="number">
+        <span>Ancho</span>
+        <input
+          type="number"
+          min="20"
+          max="2000"
+          [value]="store.document().width"
+          (change)="setSheet('width', $any($event.target).value)"
+        />
+        <small>mm</small>
+      </label>
+      <label class="number">
+        <span>Alto</span>
+        <input
+          type="number"
+          min="20"
+          max="2000"
+          [value]="store.document().height"
+          (change)="setSheet('height', $any($event.target).value)"
+        />
+        <small>mm</small>
+      </label>
+      <label class="number">
+        <span>Fondo</span>
+        <input
+          class="picker"
+          type="color"
+          [value]="store.document().background"
+          (change)="setBackground($any($event.target).value)"
+        />
+      </label>
+    </div>
+  </section>
+}
+
+<section class="block pieces">
+  <h3>Piezas ({{ store.document().shapes.length }})</h3>
+  @if (store.document().shapes.length === 0) {
+    <p class="muted">Elige una figura a la izquierda y haz clic en la mesa para colocarla.</p>
+  } @else {
+    <ol>
+      @for (piece of store.document().shapes; track piece.id; let i = $index) {
+        <li>
+          <button
+            type="button"
+            [class.active]="piece.id === store.selectedId()"
+            [attr.aria-pressed]="piece.id === store.selectedId()"
+            (click)="select(piece)"
+          >
+            <span class="dot" [style.background]="piece.fill"></span>
+            {{ labels[piece.kind] }} {{ i + 1 }}
+          </button>
+        </li>
+      }
+    </ol>
+  }
+  <p class="keys">
+    Con una pieza elegida: flechas para mover (Shift, 10 mm), Supr para borrar, Ctrl + D para
+    duplicar.
+  </p>
+</section>
