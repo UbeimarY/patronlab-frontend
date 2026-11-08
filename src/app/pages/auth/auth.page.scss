@@ -1,0 +1,131 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.mat {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: 2rem;
+  padding: 2.5rem;
+  color: #f4f7f5;
+  background-color: var(--mat);
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.16) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size:
+    100px 100px,
+    100px 100px,
+    20px 20px,
+    20px 20px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.plan {
+  width: min(100%, 520px);
+  justify-self: center;
+}
+
+.sheet {
+  fill: #e6d7bd;
+  stroke: #1d2321;
+  stroke-width: 1;
+}
+
+.piece {
+  stroke: #1d2321;
+  stroke-width: 1.2;
+}
+
+.p1 {
+  fill: #7a2e1f;
+}
+.p2 {
+  fill: #2e5e8c;
+}
+.p3 {
+  fill: #3f6b3a;
+}
+.p4 {
+  fill: #d9a441;
+}
+.p5 {
+  fill: #9cae5b;
+}
+
+/* The one animated moment: the cutting route traced once, like chalk on felt. */
+.route {
+  fill: none;
+  stroke: var(--chalk);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: trace 2.4s 0.4s ease-out forwards;
+}
+
+@keyframes trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.claim {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.2;
+}
+
+.panel {
+  display: grid;
+  place-items: center;
+  padding: 2rem 16px;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 380px);
+}
+
+.lead {
+  color: var(--muted);
+  margin-top: -0.5rem;
+}
+
+.submit {
+  min-height: 42px;
+}
+
+.switch {
+  color: var(--muted);
+  font-size: 0.925rem;
+}
+
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mat {
+    padding: 1.25rem 16px;
+    gap: 1rem;
+  }
+
+  .plan {
+    width: min(100%, 300px);
+  }
+
+  .claim {
+    font-size: 1.35rem;
+  }
+}
