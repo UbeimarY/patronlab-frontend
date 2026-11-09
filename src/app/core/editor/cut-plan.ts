@@ -79,3 +79,52 @@ export function drawCutPlan(
     ctx.fillText(String(i + 1), x, y + 1);
   });
 }
+
+/**
+ * The cutting plan as a real-size SVG (millimeters), ready for a laser cutter or a
+ * plotter. Two layers: "corte" holds only the cut lines; "orden" the numbers and the
+ * route, which can be hidden before cutting.
+ */
+export function cutPlanSvg(
+  document: PatternDocument,
+  layout: Layout,
+  rollWidth: number,
+  title: string,
+): string {
+  const placed = placedShapes(document, layout);
+  const length = Math.ceil(layout.usedLength + 5);
+  const fmt = (n: number) => n.toFixed(2);
+  const cuts = [...placed.values()]
+    .map((shape) => {
+      const points = outline(shape)
+        .map(([x, y]) => `${fmt(x)},${fmt(y)}`)
+        .join(' ');
+      return `    <polygon id="${shape.id}" points="${points}" fill="none" stroke="#d40000" stroke-width="0.1"/>`;
+    })
+    .join('\n');
+  const centers = layout.cutOrder
+    .map((id) => placed.get(id))
+    .filter((shape): shape is Shape => !!shape);
+  const route = ['0,0', ...centers.map((shape) => `${fmt(shape.x)},${fmt(shape.y)}`)].join(' ');
+  const labels = centers
+    .map(
+      (shape, i) =>
+        `    <text x="${fmt(shape.x)}" y="${fmt(shape.y)}" font-size="6" text-anchor="middle" dominant-baseline="central" fill="#1f4fbf">${i + 1}</text>`,
+    )
+    .join('\n');
+  const escape = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${rollWidth}mm" height="${length}mm" viewBox="0 0 ${rollWidth} ${length}">`,
+    `  <title>${escape(title)}: plan de corte</title>`,
+    `  <rect width="${rollWidth}" height="${length}" fill="none" stroke="#999999" stroke-width="0.2"/>`,
+    `  <g id="corte">`,
+    cuts,
+    `  </g>`,
+    `  <g id="orden">`,
+    `    <polyline points="${route}" fill="none" stroke="#1f4fbf" stroke-width="0.3" stroke-dasharray="2 1.5"/>`,
+    labels,
+    `  </g>`,
+    `</svg>`,
+    '',
+  ].join('\n');
+}

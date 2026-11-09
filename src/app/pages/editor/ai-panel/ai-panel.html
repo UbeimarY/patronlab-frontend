@@ -182,6 +182,9 @@
       role="img"
       aria-label="Plan de corte: piezas acomodadas en el rollo, numeradas en el orden de corte"
     ></canvas>
+    <button class="btn small" type="button" (click)="downloadPlan()">
+      Descargar plan a escala real (SVG)
+    </button>
     <p class="muted small">
       "Antes" es colocar las piezas en el orden en que las dibujaste, sin girarlas, y cortarlas en
       ese orden. Los números marcan el orden de corte desde la esquina del rollo.

@@ -3,9 +3,10 @@ import { FormsModule } from '@angular/forms';
 
 import { describeError } from '../../../core/api/graphql';
 import { Layout, PatronlabApi, Score, Variations } from '../../../core/api/patronlab-api';
-import { drawCutPlan } from '../../../core/editor/cut-plan';
+import { cutPlanSvg, drawCutPlan } from '../../../core/editor/cut-plan';
 import { PatternDocument, materialOf } from '../../../core/editor/document';
 import { EditorStore } from '../../../core/editor/editor-store';
+import { download, slug } from '../../../core/editor/svg-export';
 import { mm, percent } from '../../../core/format';
 import { Thumbnail } from '../../../shared/thumbnail';
 import { shrinkImage } from './image';
@@ -134,6 +135,18 @@ export class AiPanel {
     } finally {
       this.layoutBusy.set(false);
     }
+  }
+
+  downloadPlan(): void {
+    const plan = this.layout();
+    const target = this.layoutFor();
+    if (!plan || !target) return;
+    const name = this.store.name();
+    download(
+      `${slug(name)}-plan-de-corte.svg`,
+      cutPlanSvg(target.document, plan, target.rollWidth, name),
+      'image/svg+xml',
+    );
   }
 
   saving(before: number, after: number): number {
