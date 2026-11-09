@@ -1,16 +1,173 @@
 <header class="bar">
   <a class="brand" routerLink="/patrones">PatronLab</a>
+  <a class="nav-link" routerLink="/oficio">Sobre el oficio</a>
   <span class="who">{{ session.user()?.fullName }}</span>
   <button class="btn quiet small" type="button" (click)="signOut()">Salir</button>
 </header>
 
+<section class="hero" aria-label="Modo Barniz de Pasto">
+  <div class="hero-copy">
+    <p class="eyebrow">Pasto · Nariño y Putumayo</p>
+    <h1>Mesa de patrones y modo Barniz de Pasto</h1>
+    <p class="lead">
+      Planea láminas de mopa-mopa estiradas sobre madera laqueada y pan de oro, recorta motivos con
+      bisturí, aplica simetría radial y calcula el aprovechamiento por cada color.
+    </p>
+    <div class="hero-actions">
+      <button class="btn barniz" type="button" (click)="openNew('barniz')">
+        Nuevo Barniz de Pasto
+      </button>
+      <button class="btn" type="button" (click)="openNew('pattern')">Nuevo patrón de corte</button>
+      <a class="btn quiet" routerLink="/oficio">Conocer el oficio mopa-mopa →</a>
+    </div>
+  </div>
+  <svg
+    class="hero-plate"
+    viewBox="0 0 220 220"
+    role="img"
+    aria-label="Ilustración de un plato de madera decorado con láminas de mopa-mopa y pan de oro"
+  >
+    <defs>
+      <radialGradient id="woodLacquer" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#35251e" />
+        <stop offset="65%" stop-color="#1b1411" />
+        <stop offset="100%" stop-color="#0e0a08" />
+      </radialGradient>
+      <linearGradient id="goldLeaf" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f7dd84" />
+        <stop offset="45%" stop-color="#c99b2e" />
+        <stop offset="75%" stop-color="#fbe69c" />
+        <stop offset="100%" stop-color="#9e7419" />
+      </linearGradient>
+    </defs>
+    <!-- Plato de madera laqueada -->
+    <circle
+      cx="110"
+      cy="110"
+      r="102"
+      fill="url(#woodLacquer)"
+      stroke="url(#goldLeaf)"
+      stroke-width="3"
+    />
+    <circle
+      cx="110"
+      cy="110"
+      r="88"
+      fill="none"
+      stroke="url(#goldLeaf)"
+      stroke-width="1.4"
+      stroke-dasharray="6 3"
+    />
+    <!-- Corona radial de hojas y pétalos -->
+    <g transform="translate(110 110)">
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#b3202a"
+        opacity="0.92"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#286b35"
+        opacity="0.92"
+        transform="rotate(45)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#b3202a"
+        opacity="0.92"
+        transform="rotate(90)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#286b35"
+        opacity="0.92"
+        transform="rotate(135)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#b3202a"
+        opacity="0.92"
+        transform="rotate(180)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#286b35"
+        opacity="0.92"
+        transform="rotate(225)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#b3202a"
+        opacity="0.92"
+        transform="rotate(270)"
+      />
+      <path
+        d="M0,-82 C12,-66 12,-50 0,-36 C-12,-50 -12,-66 0,-82 Z"
+        fill="#286b35"
+        opacity="0.92"
+        transform="rotate(315)"
+      />
+      <!-- Sol de los Pastos en pan de oro y azul añil -->
+      <polygon points="0,-32 9,-9 32,0 9,9 0,32 -9,9 -32,0 -9,-9" fill="url(#goldLeaf)" />
+      <polygon
+        points="0,-24 6,-6 24,0 6,6 0,24 -6,6 -24,0 -6,-6"
+        fill="#1f5fa0"
+        transform="rotate(22.5)"
+      />
+      <circle cx="0" cy="0" r="8" fill="#d99b1e" stroke="#1b1411" stroke-width="1.5" />
+    </g>
+  </svg>
+</section>
+
 <main class="page">
   <div class="heading">
     <div>
-      <h1>Mis patrones</h1>
-      <p class="muted">Cada vez que guardas se crea una versión que puedes recuperar.</p>
+      <h2>Mis diseños</h2>
+      <p class="muted">Cada vez que guardas se conserva una versión que puedes restaurar.</p>
     </div>
-    <button class="btn primary" type="button" (click)="openNew()">Nuevo patrón</button>
+    <div class="filters" role="search" aria-label="Filtrar diseños">
+      <label class="search-field">
+        <span class="visually-hidden">Buscar por nombre</span>
+        <input
+          type="search"
+          placeholder="Buscar diseño…"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+      </label>
+      <div class="segmented" role="group" aria-label="Modo">
+        <button
+          type="button"
+          [class.active]="modeFilter() === 'all'"
+          (click)="modeFilter.set('all')"
+        >
+          Todos
+        </button>
+        <button
+          type="button"
+          [class.active]="modeFilter() === 'barniz'"
+          (click)="modeFilter.set('barniz')"
+        >
+          Barniz
+        </button>
+        <button
+          type="button"
+          [class.active]="modeFilter() === 'pattern'"
+          (click)="modeFilter.set('pattern')"
+        >
+          Patrón
+        </button>
+      </div>
+      <label class="mat-filter">
+        <span class="visually-hidden">Filtrar por material</span>
+        <select [ngModel]="materialFilter()" (ngModelChange)="materialFilter.set($event)">
+          <option value="all">Todos los materiales</option>
+          @for (option of materials; track option.id) {
+            <option [value]="option.id">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
   </div>
 
   @if (loadError(); as message) {
@@ -19,43 +176,97 @@
     </p>
   }
 
-  @if (patterns(); as list) {
-    @if (list.length === 0) {
+  @if (filteredPatterns(); as list) {
+    @if (patterns()?.length === 0) {
       <section class="empty">
-        <h2>Tu mesa de corte está vacía</h2>
+        <h2>Tu taller está listo para empezar</h2>
         <p class="muted">
-          Empieza con una plantilla, como el cojín de hojas, y cámbiala a tu gusto.
+          Elige una plantilla inspirada en la región para Barniz de Pasto o un patrón de corte en
+          fieltro, cuero o madera.
         </p>
-        <button class="btn primary" type="button" (click)="openNew()">
-          Crear mi primer patrón
+        <div class="hero-actions">
+          <button class="btn barniz" type="button" (click)="openNew('barniz')">
+            Crear diseño de Barniz de Pasto
+          </button>
+          <button class="btn primary" type="button" (click)="openNew('pattern')">
+            Crear patrón de corte
+          </button>
+        </div>
+      </section>
+    } @else if (list.length === 0) {
+      <section class="empty">
+        <h2>Ningún diseño coincide con tu búsqueda</h2>
+        <p class="muted">Prueba cambiando el filtro de modo o de material.</p>
+        <button
+          class="btn small"
+          type="button"
+          (click)="searchQuery.set(''); modeFilter.set('all'); materialFilter.set('all')"
+        >
+          Mostrar todos
         </button>
       </section>
     } @else {
       <ul class="grid">
         @for (pattern of list; track pattern.id) {
-          <li class="card">
+          <li class="card" [attr.data-mode]="modeOf(pattern)">
             <a class="open" [routerLink]="['/patrones', pattern.id]">
-              <app-thumbnail
-                class="thumb"
-                [document]="pattern.document"
-                [label]="'Vista de ' + pattern.name"
-              />
-              <span class="name">{{ pattern.name }}</span>
+              <div class="thumb-wrap">
+                <app-thumbnail
+                  class="thumb"
+                  [document]="pattern.document"
+                  [label]="'Vista de ' + pattern.name"
+                />
+                <span class="badge" [class.barniz]="modeOf(pattern) === 'barniz'">
+                  {{ modeOf(pattern) === 'barniz' ? 'Barniz de Pasto' : 'Patrón' }}
+                </span>
+              </div>
+              @if (renamingId() !== pattern.id) {
+                <span class="name">{{ pattern.name }}</span>
+              }
             </a>
+
+            @if (renamingId() === pattern.id) {
+              <div class="rename-row">
+                <input
+                  type="text"
+                  maxlength="100"
+                  aria-label="Nuevo nombre del diseño"
+                  [(ngModel)]="renameValue"
+                  (keydown.enter)="saveRename(pattern)"
+                  (keydown.escape)="renamingId.set(null)"
+                />
+                <button class="btn small primary" type="button" (click)="saveRename(pattern)">
+                  Guardar
+                </button>
+                <button class="btn small quiet" type="button" (click)="renamingId.set(null)">
+                  Cancelar
+                </button>
+              </div>
+            }
+
             <p class="meta">
-              {{ materialOf(pattern.material).label }}, versión {{ pattern.currentVersion }},
-              {{ timeAgo(pattern.updatedAt) }}
+              {{ pieceCountOf(pattern) }} piezas
+              @if (modeOf(pattern) === 'barniz') {
+                · {{ layerCountOf(pattern) }} láminas
+              }
+              · {{ materialOf(pattern.material).label }} · {{ timeAgo(pattern.updatedAt) }}
             </p>
             <div class="actions">
               @if (confirmingDelete() === pattern.id) {
                 <span class="confirm">¿Borrar con todas sus versiones?</span>
                 <button class="btn small danger" type="button" (click)="remove(pattern)">
-                  Borrar
+                  Sí, borrar
                 </button>
                 <button class="btn small quiet" type="button" (click)="confirmingDelete.set(null)">
                   Cancelar
                 </button>
               } @else {
+                <button class="btn small quiet" type="button" (click)="duplicate(pattern)">
+                  Duplicar
+                </button>
+                <button class="btn small quiet" type="button" (click)="startRename(pattern)">
+                  Renombrar
+                </button>
                 <button
                   class="btn small quiet danger"
                   type="button"
@@ -70,43 +281,179 @@
       </ul>
     }
   } @else if (!loadError()) {
-    <p class="muted" aria-live="polite">Cargando tus patrones…</p>
+    <p class="muted" aria-live="polite">Cargando tus diseños…</p>
   }
 </main>
 
 <dialog #dialog aria-labelledby="new-title" (close)="createError.set(null)">
   <form class="new" (ngSubmit)="create()" #form="ngForm">
-    <h2 id="new-title">Nuevo patrón</h2>
-    <label class="field">
-      <span>Nombre</span>
-      <input
-        name="name"
-        [(ngModel)]="name"
-        required
-        maxlength="100"
-        placeholder="Cojín para la feria"
-      />
-    </label>
-    <label class="field">
-      <span>Material</span>
-      <select name="material" [(ngModel)]="material">
-        @for (option of materials; track option.id) {
-          <option [value]="option.id">{{ option.label }}</option>
-        }
-      </select>
-    </label>
-    <fieldset>
-      <legend>Empezar desde</legend>
-      @for (option of templates; track option.id) {
-        <label class="template">
-          <input type="radio" name="template" [value]="option.id" [(ngModel)]="template" />
-          <span>
-            <strong>{{ option.label }}</strong>
-            <small>{{ option.description }}</small>
-          </span>
+    <div class="dialog-head">
+      <h2 id="new-title">Nuevo diseño</h2>
+      <div class="mode-paths" role="radiogroup" aria-label="Tipo de diseño">
+        <button
+          type="button"
+          role="radio"
+          [attr.aria-checked]="newMode() === 'barniz'"
+          [class.active]="newMode() === 'barniz'"
+          (click)="setNewMode('barniz')"
+        >
+          <strong>Barniz de Pasto</strong>
+          <small>Láminas de mopa-mopa sobre objeto de madera</small>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [attr.aria-checked]="newMode() === 'pattern'"
+          [class.active]="newMode() === 'pattern'"
+          (click)="setNewMode('pattern')"
+        >
+          <strong>Patrón de corte</strong>
+          <small>Piezas sobre rollo de fieltro, tela, cuero o láser</small>
+        </button>
+      </div>
+    </div>
+
+    <div class="new-grid">
+      <div class="new-controls">
+        <label class="field">
+          <span>Nombre</span>
+          <input
+            name="name"
+            [(ngModel)]="name"
+            required
+            maxlength="100"
+            placeholder="Plato colibrí de mopa-mopa"
+          />
         </label>
-      }
-    </fieldset>
+
+        @if (newMode() === 'barniz') {
+          <div class="object-config">
+            <label class="field">
+              <span>Objeto de madera</span>
+              <select
+                name="objectKind"
+                [ngModel]="objectKind()"
+                (ngModelChange)="objectKind.set($event)"
+              >
+                @for (item of objectKinds; track item.id) {
+                  <option [value]="item.id">{{ item.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>{{ isCircularObject() ? 'Diámetro (mm)' : 'Ancho (mm)' }}</span>
+              <input
+                type="number"
+                name="objectWidth"
+                min="80"
+                max="1200"
+                [ngModel]="objectWidth()"
+                (ngModelChange)="objectWidth.set($event)"
+              />
+            </label>
+            @if (!isCircularObject()) {
+              <label class="field">
+                <span>Alto (mm)</span>
+                <input
+                  type="number"
+                  name="objectHeight"
+                  min="80"
+                  max="1200"
+                  [ngModel]="objectHeight()"
+                  (ngModelChange)="objectHeight.set($event)"
+                />
+              </label>
+            }
+          </div>
+
+          <div class="object-config">
+            <label class="field">
+              <span>Esmalte de base</span>
+              <div class="base-swatches">
+                <input
+                  type="color"
+                  name="baseColor"
+                  aria-label="Color del esmalte de base"
+                  [ngModel]="baseColor()"
+                  (ngModelChange)="baseColor.set($event)"
+                />
+                @for (preset of basePresets; track preset.hex) {
+                  <button
+                    type="button"
+                    class="swatch-chip"
+                    [style.background]="preset.hex"
+                    [class.active]="baseColor() === preset.hex"
+                    [title]="preset.label"
+                    [attr.aria-label]="preset.label"
+                    (click)="baseColor.set(preset.hex)"
+                  ></button>
+                }
+              </div>
+            </label>
+            <label class="field">
+              <span>Lámina metálica previa</span>
+              <select name="leaf" [ngModel]="leaf()" (ngModelChange)="leaf.set($event)">
+                @for (opt of leafOptions; track opt.id) {
+                  <option [value]="opt.id">{{ opt.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        } @else {
+          <label class="field">
+            <span>Material</span>
+            <select name="material" [(ngModel)]="material">
+              @for (option of materials; track option.id) {
+                <option [value]="option.id">{{ option.label }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <fieldset>
+          <legend>
+            {{
+              newMode() === 'barniz'
+                ? 'Plantillas inspiradas en la región'
+                : 'Empezar desde plantilla'
+            }}
+          </legend>
+          @for (option of modeTemplates(); track option.id) {
+            <label class="template">
+              <input
+                type="radio"
+                name="template"
+                [value]="option.id"
+                [checked]="templateId() === option.id"
+                (change)="selectTemplate(option.id)"
+              />
+              <span>
+                <strong>{{ option.label }}</strong>
+                <small>{{ option.description }}</small>
+              </span>
+            </label>
+          }
+        </fieldset>
+      </div>
+
+      <aside class="live-object-preview" aria-label="Vista previa en vivo del objeto">
+        <span class="preview-title">Vista previa en vivo</span>
+        <app-thumbnail
+          class="preview-thumb"
+          [document]="previewDocument()"
+          [size]="240"
+          [label]="'Vista previa de ' + (name || 'nuevo diseño')"
+        />
+        <p class="preview-caption">
+          {{ previewDocument().width }} × {{ previewDocument().height }} mm ·
+          {{ previewDocument().shapes.length }} piezas
+          @if (previewDocument().layers?.length; as lCount) {
+            · {{ lCount }} láminas
+          }
+        </p>
+      </aside>
+    </div>
+
     @if (createError(); as message) {
       <p class="error-text" role="alert">{{ message }}</p>
     }

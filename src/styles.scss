@@ -1,15 +1,24 @@
-/* PatronLab: a self-healing cutting mat (green, ruled in millimeters), paper panels,
-   and tailor's chalk yellow reserved for what is selected. */
+/* PatronLab: a self-healing cutting mat (green, ruled in millimeters) in Pattern mode,
+   and lacquered wood with aniline mopa-mopa colors and gold leaf accents in Barniz mode. */
 
 :root {
   color-scheme: light;
-  --paper: #fafaf8;
-  --paper-2: #f0f2f0;
-  --ink: #1d2321;
-  --muted: #56635e;
-  --line: #d6ddd9;
+  --paper: #faf8f5;
+  --paper-2: #f0ece4;
+  --ink: #1d1a17;
+  --muted: #5b554f;
+  --line: #d8d1c7;
   --mat: #2d5a4a;
   --mat-deep: #23493c;
+  --barniz-wood: #1b1411;
+  --barniz-wood-deep: #120d0b;
+  --gold: #c99b2e;
+  --gold-bright: #e5bd54;
+  --silver: #bcc5ce;
+  --aniline-red: #b3202a;
+  --aniline-green: #286b35;
+  --aniline-blue: #1f5fa0;
+  --aniline-yellow: #d99b1e;
   --primary: #24493c;
   --primary-hover: #1a382e;
   --primary-ink: #ffffff;
@@ -25,11 +34,13 @@
 
 @mixin dark {
   color-scheme: dark;
-  --paper: #141917;
-  --paper-2: #1b221f;
-  --ink: #e6ebe8;
-  --muted: #9aa8a2;
-  --line: #2e3834;
+  --paper: #141210;
+  --paper-2: #1e1a17;
+  --ink: #ede7e1;
+  --muted: #a49a90;
+  --line: #312a25;
+  --gold: #e0b646;
+  --gold-bright: #f2cc68;
   --primary: #8cc7a9;
   --primary-hover: #a6d6bd;
   --primary-ink: #0d1411;
@@ -145,6 +156,16 @@ textarea {
     }
   }
 
+  &.barniz {
+    background: var(--barniz-wood);
+    border-color: var(--gold);
+    color: #f7efe2;
+
+    &:hover:not(:disabled) {
+      background: #281d18;
+    }
+  }
+
   &.quiet {
     border-color: transparent;
     background: transparent;
@@ -210,11 +231,11 @@ dialog {
   padding: 0;
   background: var(--paper);
   color: var(--ink);
-  max-width: min(560px, calc(100vw - 32px));
+  max-width: min(680px, calc(100vw - 24px));
   width: 100%;
 
   &::backdrop {
-    background: rgb(15 25 21 / 0.55);
+    background: rgb(15 12 10 / 0.6);
   }
 }
 
