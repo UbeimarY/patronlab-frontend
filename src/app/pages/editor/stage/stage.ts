@@ -14,9 +14,12 @@ import {
 import { Shape, clampShape, round } from '../../../core/editor/document';
 import { EditorStore } from '../../../core/editor/editor-store';
 import { Point, handlePositions, hitTest, toLocal } from '../../../core/editor/geometry';
+import { drawRuler } from '../../../core/editor/rulers';
+import { Guides, NO_GUIDES, snapToGuides } from '../../../core/editor/snapping';
 import {
   BASE_PX_PER_MM,
   drawBackground,
+  drawGuides,
   drawSelection,
   drawShape,
   drawShapes,
@@ -33,6 +36,8 @@ const MAX_ZOOM = 6;
 /** Screen pixels: distance of the rotate handle and how close a pointer must be to a handle. */
 const HANDLE_OFFSET_PX = 26;
 const HANDLE_HIT_PX = 12;
+/** How close (on screen) a center must come to a guide to snap to it. */
+const SNAP_PX = 6;
 
 /**
  * The cutting mat. Three stacked canvases, each redrawn only when what it shows changes:
@@ -62,6 +67,8 @@ export class Stage {
   private readonly shapesLayer = viewChild.required<ElementRef<HTMLCanvasElement>>('shapes');
   private readonly interactionLayer =
     viewChild.required<ElementRef<HTMLCanvasElement>>('interaction');
+  private readonly rulerX = viewChild.required<ElementRef<HTMLCanvasElement>>('rulerX');
+  private readonly rulerY = viewChild.required<ElementRef<HTMLCanvasElement>>('rulerY');
 
   /** Current zoom (CSS transform) and the zoom the canvases are rasterized at. */
   readonly zoom = signal(1);
@@ -75,6 +82,8 @@ export class Stage {
   private readonly liftedId = signal<string | null>(null);
 
   private gesture: Gesture | null = null;
+  /** Alignment guides shown while a piece is being moved. */
+  private guides: Guides = NO_GUIDES;
   private pendingPointer: PointerEvent | null = null;
   private frame = 0;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -104,6 +113,7 @@ export class Stage {
       untracked(() => {
         this.resize(canvas, scale);
         drawBackground(canvas.getContext('2d')!, this.store.document(), scale);
+        this.drawRulers();
       });
     });
 
@@ -153,6 +163,7 @@ export class Stage {
       let lastWidth = viewport.clientWidth;
       const resizeObserver = new ResizeObserver(() => {
         if (Math.abs(viewport.clientWidth - lastWidth) > 40) this.fit();
+        else this.drawRulers();
         lastWidth = viewport.clientWidth;
       });
       resizeObserver.observe(viewport);
@@ -206,6 +217,15 @@ export class Stage {
 
   private applyTransform(): void {
     this.sheet().nativeElement.style.transform = `translate3d(${this.pan.x}px, ${this.pan.y}px, 0) scale(${this.zoom()})`;
+    this.drawRulers();
+  }
+
+  /** Rulers are two thin canvases outside the sheet: cheap to repaint on every pan or zoom. */
+  private drawRulers(): void {
+    const pixelsPerMm = BASE_PX_PER_MM * this.zoom();
+    const document = this.store.document();
+    drawRuler(this.rulerX().nativeElement, 'x', this.pan.x, pixelsPerMm, document.width);
+    drawRuler(this.rulerY().nativeElement, 'y', this.pan.y, pixelsPerMm, document.height);
   }
 
   private onWheel(event: WheelEvent): void {
@@ -276,6 +296,7 @@ export class Stage {
       this.cursor.set(this.spaceDown ? 'grab' : 'default');
       return;
     }
+    this.guides = NO_GUIDES;
     this.store.commitDraft();
     this.liftedId.set(null);
     this.drawInteraction(this.store.selected(), false);
@@ -334,7 +355,14 @@ export class Stage {
         gesture.moved ||= Math.hypot(dx, dy) > 0.5;
         // Snap to whole millimeters; Alt moves freely.
         const snap = (value: number) => (event.altKey ? round(value, 1) : Math.round(value));
-        return { ...shape, x: snap(shape.x + dx), y: snap(shape.y + dy) };
+        const moved = { ...shape, x: snap(shape.x + dx), y: snap(shape.y + dy) };
+        if (event.altKey) {
+          this.guides = NO_GUIDES;
+          return moved;
+        }
+        const snapped = snapToGuides(moved, this.store.document(), this.screenToMm(SNAP_PX));
+        this.guides = snapped.guides;
+        return { ...moved, x: snapped.x, y: snapped.y };
       }
       case 'resize': {
         const [lx, ly] = toLocal(shape, point);
@@ -375,6 +403,8 @@ export class Stage {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!shape) return;
     const scale = this.rasterScale();
+    if (includeShape)
+      drawGuides(ctx, this.guides, this.store.document(), scale, this.canvasPixelsPerScreenPixel());
     if (includeShape) drawShape(ctx, shape, scale);
     drawSelection(
       ctx,

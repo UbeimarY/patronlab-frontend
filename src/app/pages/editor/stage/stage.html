@@ -17,5 +17,8 @@
     <canvas #shapes class="layer"></canvas>
     <canvas #interaction class="layer"></canvas>
   </div>
+  <canvas #rulerX class="ruler ruler--x" aria-hidden="true"></canvas>
+  <canvas #rulerY class="ruler ruler--y" aria-hidden="true"></canvas>
+  <span class="ruler-corner" aria-hidden="true">mm</span>
   <p class="hint">{{ hint() }}</p>
 </div>
