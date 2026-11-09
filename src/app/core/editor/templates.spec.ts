@@ -26,4 +26,3 @@ describe('TEMPLATES', () => {
     expect(doc.object?.height).toBe(340);
   });
 });
-

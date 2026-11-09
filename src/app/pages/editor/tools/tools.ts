@@ -9,11 +9,58 @@ import {
 import { EditorStore } from '../../../core/editor/editor-store';
 import { outline } from '../../../core/editor/geometry';
 
-/** Shape tools. Icons are drawn from the same outlines the canvas uses. */
+/** Shape and Bisturí tools. Icons are drawn from the same outlines the canvas uses. */
 @Component({
   selector: 'app-tools',
   template: `
-    <div class="rail" role="toolbar" aria-label="Figuras" aria-orientation="vertical">
+    <div
+      class="rail"
+      role="toolbar"
+      aria-label="Herramientas y figuras"
+      aria-orientation="vertical"
+    >
+      <button
+        type="button"
+        class="tool"
+        [class.active]="store.tool() === null"
+        [attr.aria-pressed]="store.tool() === null"
+        title="Seleccionar y mover piezas (Esc)"
+        (click)="store.tool.set(null)"
+      >
+        <svg viewBox="-12 -12 24 24" aria-hidden="true">
+          <path
+            d="M-6,-9 L7,1 L1,2 L4,9 L1,10 L-2,3 L-6,7 Z"
+            fill="currentColor"
+            fill-opacity="0.2"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>Elegir</span>
+      </button>
+
+      <button
+        type="button"
+        class="tool bisturi"
+        [class.active]="store.tool() === 'path'"
+        [attr.aria-pressed]="store.tool() === 'path'"
+        title="Bisturí (B): clic para poner puntos, arrastrar para curva suave, doble clic o clic en el inicio para cerrar el corte"
+        (click)="toggle('path')"
+      >
+        <svg viewBox="-12 -12 24 24" aria-hidden="true">
+          <path
+            d="M-9,9 L-2,2 L2,5 L-9,9 Z M-2,2 L7,-7 L9,-5 L0,4 Z"
+            fill="currentColor"
+            fill-opacity="0.25"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>Bisturí</span>
+      </button>
+
       @for (kind of kinds; track kind) {
         <button
           type="button"
@@ -51,7 +98,7 @@ import { outline } from '../../../core/editor/geometry';
       justify-items: center;
       gap: 2px;
       width: 64px;
-      padding: 0.45rem 0.2rem;
+      padding: 0.42rem 0.2rem;
       border: 0;
       border-radius: 6px;
       background: transparent;
@@ -66,9 +113,14 @@ import { outline } from '../../../core/editor/geometry';
       background: var(--mat);
       color: #fff;
     }
+    .tool.bisturi.active {
+      background: var(--barniz-wood);
+      outline: 1px solid var(--gold);
+      color: var(--gold-bright);
+    }
     svg {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
     }
     polygon {
       fill: currentColor;
@@ -77,7 +129,8 @@ import { outline } from '../../../core/editor/geometry';
       stroke-width: 1.4;
       stroke-linejoin: round;
     }
-    .tool.active polygon {
+    .tool.active polygon,
+    .tool.active path {
       fill: var(--chalk);
       fill-opacity: 1;
       stroke: #1d2321;
@@ -90,6 +143,22 @@ import { outline } from '../../../core/editor/geometry';
       border-radius: 4px;
       background: var(--paper);
       cursor: pointer;
+    }
+    @media (max-width: 640px) {
+      .rail {
+        display: flex;
+        align-items: center;
+        overflow-x: auto;
+        padding: 0.25rem 0.4rem;
+        gap: 4px;
+      }
+      .tool,
+      .fill {
+        width: auto;
+        min-width: 54px;
+        flex: 0 0 auto;
+        padding: 0.3rem 0.35rem;
+      }
     }
   `,
 })

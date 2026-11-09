@@ -1,30 +1,173 @@
+@if (isBarniz()) {
+  <section class="block layers-block" aria-label="Panel de láminas de mopa-mopa">
+    <div class="title">
+      <h3>Láminas de mopa-mopa ({{ (store.document().layers ?? []).length }}/12)</h3>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.addLayer()"
+        [disabled]="(store.document().layers ?? []).length >= 12"
+      >
+        + Lámina
+      </button>
+    </div>
+    <p class="muted small">
+      Orden de aplicación (la primera va pegada sobre el esmalte o el pan de oro). La lámina activa
+      recibe los nuevos cortes.
+    </p>
+    <ol class="layer-list">
+      @for (layer of store.document().layers ?? []; track layer.id; let i = $index) {
+        <li
+          class="layer-item"
+          [class.active]="store.activeLayer()?.id === layer.id"
+          (click)="store.selectLayer(layer.id)"
+        >
+          <input
+            type="color"
+            class="layer-color"
+            [value]="layer.color"
+            [attr.aria-label]="'Color de lámina ' + layer.name"
+            (click)="$event.stopPropagation()"
+            (change)="store.updateLayer(layer.id, { color: $any($event.target).value })"
+          />
+          <input
+            type="text"
+            class="layer-name"
+            [value]="layer.name"
+            maxlength="40"
+            [attr.aria-label]="'Nombre de lámina ' + (i + 1)"
+            (click)="$event.stopPropagation()"
+            (change)="store.updateLayer(layer.id, { name: $any($event.target).value })"
+          />
+          <div class="layer-btns" (click)="$event.stopPropagation()">
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              [title]="'Pintar todas las piezas de esta lámina con ' + layer.color"
+              (click)="store.applyColorToLayer(layer.id, layer.color)"
+            >
+              Pintar
+            </button>
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              [attr.aria-pressed]="layer.visible"
+              [title]="layer.visible ? 'Ocultar lámina' : 'Mostrar lámina'"
+              (click)="store.updateLayer(layer.id, { visible: !layer.visible })"
+            >
+              {{ layer.visible ? '👁' : '—' }}
+            </button>
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              [attr.aria-pressed]="layer.locked"
+              [title]="layer.locked ? 'Desbloquear lámina' : 'Bloquear lámina'"
+              (click)="store.updateLayer(layer.id, { locked: !layer.locked })"
+            >
+              {{ layer.locked ? '🔒' : '🔓' }}
+            </button>
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              title="Subir orden de aplicación"
+              [disabled]="i === 0"
+              (click)="store.moveLayer(layer.id, -1)"
+            >
+              ↑
+            </button>
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              title="Bajar orden de aplicación"
+              [disabled]="i === (store.document().layers?.length ?? 1) - 1"
+              (click)="store.moveLayer(layer.id, 1)"
+            >
+              ↓
+            </button>
+            <button
+              class="btn quiet small icon-btn"
+              type="button"
+              title="Exportar SVG de esta lámina"
+              (click)="exportSingleLayerSvg(layer)"
+            >
+              SVG
+            </button>
+            <button
+              class="btn quiet small icon-btn danger"
+              type="button"
+              title="Borrar lámina"
+              [disabled]="(store.document().layers?.length ?? 0) <= 1"
+              (click)="store.deleteLayer(layer.id)"
+            >
+              ×
+            </button>
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+}
+
 @if (shape(); as current) {
   <section class="block">
     <div class="title">
-      <h3>{{ labels[current.kind] }}</h3>
-      <button class="btn quiet small" type="button" (click)="store.selectedId.set(null)">
-        Listo
-      </button>
+      <h3>
+        {{ labels[current.kind] }}
+        @if (store.selectedIds().length > 1) {
+          <small>({{ store.selectedIds().length }} elegidas)</small>
+        }
+      </h3>
+      <button class="btn quiet small" type="button" (click)="store.selectOne(null)">Listo</button>
     </div>
     <div class="numbers">
       @for (field of fields; track field.key) {
-        <label class="number">
-          <span>{{ field.label }}</span>
-          <input
-            type="number"
-            inputmode="decimal"
-            step="1"
-            [value]="current[field.key]"
-            (change)="setNumber(field.key, $any($event.target).value)"
-          />
-          <small>{{ field.unit }}</small>
-        </label>
+        @if (current.kind !== 'path' || (field.key !== 'width' && field.key !== 'height')) {
+          <label class="number">
+            <span>{{ field.label }}</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              step="1"
+              [value]="current[field.key]"
+              (change)="setNumber(field.key, $any($event.target).value)"
+            />
+            <small>{{ field.unit }}</small>
+          </label>
+        }
       }
     </div>
+    @if (current.kind === 'path') {
+      <div class="path-help">
+        <p class="muted small">
+          Corte a bisturí con <strong>{{ current.points?.length ?? 0 }}</strong> nodos. Doble clic
+          en un tramo en la mesa para insertar un nodo.
+        </p>
+        @if (store.selectedNodeIndex() !== null) {
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="(current.points?.length ?? 0) <= 3"
+            (click)="store.deletePathNode(store.selectedNodeIndex()!)"
+          >
+            Borrar nodo elegido (#{{ store.selectedNodeIndex()! + 1 }})
+          </button>
+        }
+      </div>
+    }
   </section>
 
   <section class="block">
-    <h3>Color</h3>
+    <h3>Color y lámina</h3>
+    @if (isBarniz() && (store.document().layers ?? []).length > 0) {
+      <label class="field">
+        <span>Lámina asignada</span>
+        <select [value]="current.layerId ?? ''" (change)="setShapeLayer($any($event.target).value)">
+          @for (layer of store.document().layers ?? []; track layer.id) {
+            <option [value]="layer.id">{{ layer.name }} ({{ layer.color }})</option>
+          }
+        </select>
+      </label>
+    }
     <div class="colors">
       <input
         class="picker"
@@ -46,22 +189,168 @@
     </div>
   </section>
 
-  <section class="block actions">
-    <button class="btn small" type="button" (click)="store.reorderSelected('front')">
-      Traer al frente
-    </button>
-    <button class="btn small" type="button" (click)="store.reorderSelected('back')">
-      Enviar atrás
-    </button>
-    <button class="btn small" type="button" (click)="store.duplicateSelected()">Duplicar</button>
-    <button class="btn small danger" type="button" (click)="store.deleteSelected()">Borrar</button>
+  <section class="block">
+    <div class="title">
+      <h3>Simetría radial</h3>
+      <label class="toggle-line">
+        <input
+          type="checkbox"
+          [checked]="!!radialGroup()"
+          (change)="toggleRadial($any($event.target).checked)"
+        />
+        <span>Activar</span>
+      </label>
+    </div>
+    @if (radialGroup(); as rad) {
+      <div class="radial-controls">
+        <label class="number">
+          <span>Copias</span>
+          <input
+            type="number"
+            min="2"
+            max="24"
+            [value]="rad.count"
+            (change)="updateRadialCount($any($event.target).value)"
+          />
+          <small>N</small>
+        </label>
+        <label class="toggle-line">
+          <input
+            type="checkbox"
+            [checked]="rad.mirror"
+            (change)="updateRadialMirror($any($event.target).checked)"
+          />
+          <span>Espejo alterno</span>
+        </label>
+      </div>
+      <p class="muted small">
+        Al mover o girar la pieza fuente, las {{ rad.count - 1 }} copias se regeneran alrededor del
+        centro del objeto.
+      </p>
+    }
+  </section>
+
+  <section class="block">
+    <h3>Alinear, voltear y agrupar</h3>
+    <div class="actions">
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('left')"
+        title="Alinear a la izquierda"
+      >
+        ↤ Izq.
+      </button>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('center-x')"
+        title="Centrar horizontalmente"
+      >
+        ↔ Centro X
+      </button>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('right')"
+        title="Alinear a la derecha"
+      >
+        Der. ↦
+      </button>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('top')"
+        title="Alinear arriba"
+      >
+        ↥ Arriba
+      </button>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('center-y')"
+        title="Centrar verticalmente"
+      >
+        ↕ Centro Y
+      </button>
+      <button
+        class="btn small"
+        type="button"
+        (click)="store.alignSelected('bottom')"
+        title="Alinear abajo"
+      >
+        Abajo ↧
+      </button>
+      @if (store.selectedIds().length >= 3) {
+        <button class="btn small" type="button" (click)="store.distributeSelected('x')">
+          Distribuir X
+        </button>
+        <button class="btn small" type="button" (click)="store.distributeSelected('y')">
+          Distribuir Y
+        </button>
+      }
+    </div>
+    <div class="actions">
+      <button class="btn small" type="button" (click)="store.flipSelected('horizontal')">
+        Voltear H
+      </button>
+      <button class="btn small" type="button" (click)="store.flipSelected('vertical')">
+        Voltear V
+      </button>
+      @if (store.selectedIds().length >= 2) {
+        <button class="btn small" type="button" (click)="store.groupSelected()">Agrupar</button>
+      }
+      @if (current.groupId) {
+        <button class="btn small" type="button" (click)="store.ungroupSelected()">
+          Desagrupar
+        </button>
+      }
+    </div>
+    <div class="actions">
+      <button class="btn small" type="button" (click)="store.reorderSelected('front')">
+        Traer al frente
+      </button>
+      <button class="btn small" type="button" (click)="store.reorderSelected('back')">
+        Enviar atrás
+      </button>
+      <button class="btn small" type="button" (click)="store.duplicateSelected()">Duplicar</button>
+      <button class="btn small danger" type="button" (click)="store.deleteSelected()">
+        Borrar
+      </button>
+    </div>
   </section>
 } @else {
   <section class="block">
-    <h3>Pieza de material</h3>
+    <h3>{{ isBarniz() ? 'Objeto de madera esmaltada' : 'Pieza de material' }}</h3>
+    @if (isBarniz() && store.document().object; as obj) {
+      <div class="numbers">
+        <label class="field">
+          <span>Forma</span>
+          <select [value]="obj.kind" (change)="setObjectKind($any($event.target).value)">
+            <option value="plate">Plato circular</option>
+            <option value="bowl">Cuenco circular</option>
+            <option value="box">Caja rectangular</option>
+            <option value="tray">Bandeja</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Lámina metálica</span>
+          <select [value]="obj.leaf" (change)="setObjectLeaf($any($event.target).value)">
+            <option value="gold">Pan de oro</option>
+            <option value="silver">Pan de plata</option>
+            <option value="none">Ninguna</option>
+          </select>
+        </label>
+      </div>
+    }
     <div class="numbers">
       <label class="number">
-        <span>Ancho</span>
+        <span>{{
+          isBarniz() &&
+          (store.document().object?.kind === 'plate' || store.document().object?.kind === 'bowl')
+            ? 'Ø'
+            : 'Ancho'
+        }}</span>
         <input
           type="number"
           min="20"
@@ -71,23 +360,28 @@
         />
         <small>mm</small>
       </label>
+      @if (
+        !isBarniz() ||
+        (store.document().object?.kind !== 'plate' && store.document().object?.kind !== 'bowl')
+      ) {
+        <label class="number">
+          <span>Alto</span>
+          <input
+            type="number"
+            min="20"
+            max="2000"
+            [value]="store.document().height"
+            (change)="setSheet('height', $any($event.target).value)"
+          />
+          <small>mm</small>
+        </label>
+      }
       <label class="number">
-        <span>Alto</span>
-        <input
-          type="number"
-          min="20"
-          max="2000"
-          [value]="store.document().height"
-          (change)="setSheet('height', $any($event.target).value)"
-        />
-        <small>mm</small>
-      </label>
-      <label class="number">
-        <span>Fondo</span>
+        <span>{{ isBarniz() ? 'Esmalte' : 'Fondo' }}</span>
         <input
           class="picker"
           type="color"
-          [value]="store.document().background"
+          [value]="store.document().object?.baseColor ?? store.document().background"
           (change)="setBackground($any($event.target).value)"
         />
       </label>
@@ -98,26 +392,31 @@
 <section class="block pieces">
   <h3>Piezas ({{ store.document().shapes.length }})</h3>
   @if (store.document().shapes.length === 0) {
-    <p class="muted">Elige una figura a la izquierda y haz clic en la mesa para colocarla.</p>
+    <p class="muted">
+      Elige el Bisturí o una figura a la izquierda y haz clic en la mesa para colocarla.
+    </p>
   } @else {
     <ol>
       @for (piece of store.document().shapes; track piece.id; let i = $index) {
         <li>
           <button
             type="button"
-            [class.active]="piece.id === store.selectedId()"
-            [attr.aria-pressed]="piece.id === store.selectedId()"
-            (click)="select(piece)"
+            [class.active]="store.selectedIds().includes(piece.id)"
+            [attr.aria-pressed]="store.selectedIds().includes(piece.id)"
+            (click)="select(piece, $event)"
           >
             <span class="dot" [style.background]="piece.fill"></span>
             {{ labels[piece.kind] }} {{ i + 1 }}
+            @if (piece.groupId) {
+              <small class="group-pill">grupo</small>
+            }
           </button>
         </li>
       }
     </ol>
   }
   <p class="keys">
-    Con una pieza elegida: flechas para mover (Shift, 10 mm), Supr para borrar, Ctrl + D para
-    duplicar.
+    Shift+clic para elegir varias. Con piezas elegidas: flechas para mover (Shift, 10 mm), Supr para
+    borrar, Ctrl+D para duplicar.
   </p>
 </section>
