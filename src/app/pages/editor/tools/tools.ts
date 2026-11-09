@@ -1,6 +1,11 @@
 import { Component, inject } from '@angular/core';
 
-import { SHAPE_KINDS, SHAPE_LABELS, ShapeKind } from '../../../core/editor/document';
+import {
+  PRIMITIVE_SHAPE_KINDS,
+  PrimitiveShapeKind,
+  SHAPE_LABELS,
+  ShapeKind,
+} from '../../../core/editor/document';
 import { EditorStore } from '../../../core/editor/editor-store';
 import { outline } from '../../../core/editor/geometry';
 
@@ -90,10 +95,10 @@ import { outline } from '../../../core/editor/geometry';
 })
 export class Tools {
   readonly store = inject(EditorStore);
-  readonly kinds = SHAPE_KINDS;
+  readonly kinds = PRIMITIVE_SHAPE_KINDS;
   readonly labels = SHAPE_LABELS;
   readonly icons = Object.fromEntries(
-    SHAPE_KINDS.map((kind) => [
+    PRIMITIVE_SHAPE_KINDS.map((kind) => [
       kind,
       outline({
         id: kind,
@@ -109,7 +114,7 @@ export class Tools {
         .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
         .join(' '),
     ]),
-  ) as Record<ShapeKind, string>;
+  ) as Record<PrimitiveShapeKind, string>;
 
   toggle(kind: ShapeKind): void {
     this.store.tool.update((current) => (current === kind ? null : kind));

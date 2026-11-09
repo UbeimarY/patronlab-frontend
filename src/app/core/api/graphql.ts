@@ -20,6 +20,10 @@ interface GraphqlResponse<T> {
   errors?: { message: string; extensions?: Record<string, unknown> }[];
 }
 
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
 /**
  * A deliberately small GraphQL client: one POST per operation, typed results,
  * errors turned into ApiError. The editor needs no cache layer (it owns its
@@ -30,7 +34,11 @@ export class GraphqlClient {
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
 
-  async request<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  async request<T>(
+    query: string,
+    variables: Record<string, unknown> = {},
+    options: RequestOptions = {},
+  ): Promise<T> {
     const token = this.session.token();
     let response: Response;
     try {
@@ -41,8 +49,12 @@ export class GraphqlClient {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ query, variables }),
+        ...(options.signal ? { signal: options.signal } : {}),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError('ABORTED', 'Operación cancelada.');
+      }
       throw new ApiError('NETWORK', 'No hay conexión con el servidor. Revisa tu internet.');
     }
     let body: GraphqlResponse<T>;
@@ -66,8 +78,27 @@ export class GraphqlClient {
   }
 }
 
+const CODE_MESSAGES: Record<string, string> = {
+  RATE_LIMITED:
+    'Has hecho muchas consultas seguidas. Espera unos segundos antes de volver a intentar.',
+  IMAGE_TOO_COMPLEX:
+    'La imagen tiene demasiados detalles pequeños. Prueba bajando el control de detalle o aumentando el tamaño mínimo de pieza.',
+  TOO_MANY_POINTS:
+    'Una de las formas supera el límite de 2000 puntos por trazo. Simplifica el corte antes de guardar.',
+};
+
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === 'INVALID_DOCUMENT') {
+      const problems = error.details['problems'];
+      if (Array.isArray(problems) && problems.length > 0) {
+        return `El documento tiene datos no válidos: ${problems.map(String).join(', ')}.`;
+      }
+      return error.message || 'El documento tiene datos que el servidor no pudo validar.';
+    }
+    if (CODE_MESSAGES[error.code]) {
+      return CODE_MESSAGES[error.code];
+    }
     return error.code === 'Unexpected error' || error.message === 'Unexpected error'
       ? 'Algo falló en el servidor. Intenta de nuevo.'
       : error.message;

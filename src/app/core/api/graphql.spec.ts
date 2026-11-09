@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionStore } from '../auth/session.store';
 import { ApiError, GraphqlClient, describeError } from './graphql';
+import { PatronlabApi } from './patronlab-api';
 
-describe('GraphqlClient', () => {
+describe('GraphqlClient & PatronlabApi', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -66,7 +67,7 @@ describe('GraphqlClient', () => {
     expect(navigate).toHaveBeenCalled();
   });
 
-  it('explains network failures in plain words', async () => {
+  it('explains network failures and v2 error codes in plain Spanish', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     const error = (await TestBed.inject(GraphqlClient)
       .request('{ me { id } }')
@@ -75,5 +76,53 @@ describe('GraphqlClient', () => {
     expect(describeError(new ApiError('X', 'Unexpected error'))).toBe(
       'Algo falló en el servidor. Intenta de nuevo.',
     );
+    expect(describeError(new ApiError('RATE_LIMITED', 'Slow down'))).toContain('muchas consultas');
+    expect(describeError(new ApiError('IMAGE_TOO_COMPLEX', 'Complex'))).toContain('detalles');
+    expect(
+      describeError(
+        new ApiError('INVALID_DOCUMENT', 'Invalid', { problems: ['demasiadas capas'] }),
+      ),
+    ).toContain('demasiadas capas');
+  });
+
+  it('calls the new v2 mutations (vectorizeImage, evolveVariations, duplicatePattern, analyzeColors)', async () => {
+    const api = TestBed.inject(PatronlabApi);
+    respond({ data: { duplicatePattern: { id: 'dup-1' } } });
+    expect(await api.duplicatePattern('p-1')).toBe('dup-1');
+
+    respond({
+      data: {
+        vectorizeImage: {
+          layers: [{ id: 'l-1', name: 'Rojo', color: '#b3202a', areaShare: 0.4 }],
+          shapes: [],
+          elapsedMs: 120,
+          notes: ['Simplificado'],
+        },
+      },
+    });
+    const vec = await api.vectorizeImage({
+      image: 'data:image/jpeg;base64,xx',
+      width: 300,
+      height: 300,
+      colors: 4,
+    });
+    expect(vec.layers.length).toBe(1);
+    expect(vec.elapsedMs).toBe(120);
+
+    respond({
+      data: {
+        evolveVariations: {
+          original: { total: 0.5, balance: 0.5, overlap: 0.5, contrast: 0.5, coverage: 0.5 },
+          variations: [],
+          history: [{ generation: 1, best: 0.72, average: 0.58 }],
+        },
+      },
+    });
+    const evolved = await api.evolveVariations({
+      document: { width: 300, height: 300, background: '#000000', shapes: [] },
+      palette: ['#b3202a'],
+      weights: { balance: 0.8 },
+    });
+    expect(evolved.history[0].best).toBe(0.72);
   });
 });

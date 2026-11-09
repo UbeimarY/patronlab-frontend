@@ -1,9 +1,10 @@
-import { PatternDocument } from './document';
-import { outline } from './geometry';
+import { BarnizLayer, PatternDocument } from './document';
+import { isShapeVisible, orderedShapesForRender, outline } from './geometry';
 
 /** A real-size SVG (millimeters): opens in Inkscape, Illustrator or laser-cutter software. */
 export function toSvg(document: PatternDocument, title: string): string {
-  const pieces = document.shapes
+  const pieces = orderedShapesForRender(document)
+    .filter((shape) => isShapeVisible(document, shape))
     .map((shape) => {
       const points = outline(shape)
         .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
@@ -15,6 +16,30 @@ export function toSvg(document: PatternDocument, title: string): string {
     `<svg xmlns="http://www.w3.org/2000/svg" width="${document.width}mm" height="${document.height}mm" viewBox="0 0 ${document.width} ${document.height}">`,
     `  <title>${escape(title)}</title>`,
     `  <rect width="${document.width}" height="${document.height}" fill="${document.background}"/>`,
+    pieces,
+    '</svg>',
+    '',
+  ].join('\n');
+}
+
+/**
+ * Exports a single Barniz layer (or all shapes of a given layer) as a real-size SVG
+ * ready to trace or cut on a stretched mopa-mopa sheet.
+ */
+export function toLayerSvg(document: PatternDocument, layer: BarnizLayer, title: string): string {
+  const pieces = document.shapes
+    .filter((shape) => shape.layerId === layer.id)
+    .map((shape) => {
+      const points = outline(shape)
+        .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
+        .join(' ');
+      return `  <polygon id="${escape(shape.id)}" points="${points}" fill="${layer.color}" fill-opacity="0.35" stroke="${layer.color}" stroke-width="0.25"/>`;
+    })
+    .join('\n');
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${document.width}mm" height="${document.height}mm" viewBox="0 0 ${document.width} ${document.height}">`,
+    `  <title>${escape(title)} · Lámina ${escape(layer.name)}</title>`,
+    `  <rect width="${document.width}" height="${document.height}" fill="none" stroke="#999999" stroke-width="0.2"/>`,
     pieces,
     '</svg>',
     '',

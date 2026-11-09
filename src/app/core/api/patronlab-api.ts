@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import { SessionUser } from '../auth/session.store';
-import { PatternDocument } from '../editor/document';
-import { GraphqlClient } from './graphql';
+import { PatternDocument, PatternMode, Shape } from '../editor/document';
+import { GraphqlClient, RequestOptions } from './graphql';
 
 export interface AuthPayload {
   token: string;
@@ -14,6 +14,9 @@ export interface PatternSummary {
   id: string;
   name: string;
   material: string;
+  mode?: PatternMode;
+  pieceCount?: number;
+  layerCount?: number;
   currentVersion: number;
   updatedAt: string;
   document: PatternDocument;
@@ -48,15 +51,72 @@ export interface Variations {
   variations: { document: PatternDocument; score: Score }[];
 }
 
+export interface WeightsInput {
+  balance?: number;
+  overlap?: number;
+  contrast?: number;
+  coverage?: number;
+}
+
+export interface EvolvedGeneration {
+  generation: number;
+  best: number;
+  average: number;
+}
+
+export interface EvolvedVariations extends Variations {
+  history: EvolvedGeneration[];
+}
+
+export interface ParetoPoint {
+  document: PatternDocument;
+  balance: number;
+  contrast: number;
+  materialSaving: number;
+}
+
+export interface ParetoVariationsResult {
+  points: ParetoPoint[];
+  elapsedMs: number;
+}
+
+export interface VectorizedLayer {
+  id: string;
+  name: string;
+  color: string;
+  areaShare: number;
+}
+
+export interface VectorizeResult {
+  layers: VectorizedLayer[];
+  shapes: Shape[];
+  elapsedMs: number;
+  notes: string[];
+}
+
+export type LayoutMethod = 'SKYLINE' | 'RASTER';
+
+export interface Placement {
+  shapeId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotated: boolean;
+}
+
+export interface LayerLayout {
+  layerId: string;
+  color: string;
+  areaCm2: number;
+  usedLength: number;
+  wastePercent: number;
+  sheets: number;
+  placements: Placement[];
+}
+
 export interface Layout {
-  placements: {
-    shapeId: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotated: boolean;
-  }[];
+  placements: Placement[];
   usedLength: number;
   wastePercent: number;
   baselineLength: number;
@@ -64,6 +124,33 @@ export interface Layout {
   cutOrder: string[];
   cutTravel: number;
   baselineCutTravel: number;
+  method?: LayoutMethod;
+  layers?: LayerLayout[];
+}
+
+export interface OptimizeLayoutOptions {
+  perLayer?: boolean;
+  sheetWidth?: number;
+  sheetHeight?: number;
+  method?: LayoutMethod;
+}
+
+export interface ColorPairAnalysis {
+  a: string;
+  b: string;
+  deltaE: number;
+  tooSimilar: boolean;
+}
+
+export interface ColorNameEntry {
+  hex: string;
+  name: string;
+}
+
+export interface ColorAnalysis {
+  pairs: ColorPairAnalysis[];
+  names: ColorNameEntry[];
+  harmonies: string[][];
 }
 
 const USER = 'user { id email fullName craft }';
@@ -127,6 +214,14 @@ export class PatronlabApi {
     return data.createPattern.id;
   }
 
+  async duplicatePattern(id: string): Promise<string> {
+    const data = await this.graphql.request<{ duplicatePattern: { id: string } }>(
+      `mutation Duplicate($id: ID!) { duplicatePattern(id: $id) { id } }`,
+      { id },
+    );
+    return data.duplicatePattern.id;
+  }
+
   async savePattern(
     id: string,
     baseVersion: number,
@@ -161,18 +256,71 @@ export class PatronlabApi {
     await this.graphql.request(`mutation Delete($id: ID!) { deletePattern(id: $id) }`, { id });
   }
 
-  async extractPalette(image: string, colors: number): Promise<PaletteColor[]> {
+  async extractPalette(
+    image: string,
+    colors: number,
+    options?: RequestOptions,
+  ): Promise<PaletteColor[]> {
     const data = await this.graphql.request<{ extractPalette: PaletteColor[] }>(
       `mutation Palette($image: String!, $colors: Int!) { extractPalette(image: $image, colors: $colors) { hex share } }`,
       { image, colors },
+      options,
     );
     return data.extractPalette;
+  }
+
+  async vectorizeImage(
+    input: {
+      image: string;
+      width: number;
+      height: number;
+      colors?: number;
+      detail?: number;
+      minArea?: number;
+    },
+    options?: RequestOptions,
+  ): Promise<VectorizeResult> {
+    const data = await this.graphql.request<{ vectorizeImage: VectorizeResult }>(
+      `mutation Vectorize(
+         $image: String!,
+         $width: Float!,
+         $height: Float!,
+         $colors: Int = 4,
+         $detail: Float = 0.5,
+         $minArea: Float = 20
+       ) {
+         vectorizeImage(
+           image: $image,
+           width: $width,
+           height: $height,
+           colors: $colors,
+           detail: $detail,
+           minArea: $minArea
+         ) {
+           layers { id name color areaShare }
+           shapes
+           elapsedMs
+           notes
+         }
+       }`,
+      {
+        image: input.image,
+        width: input.width,
+        height: input.height,
+        colors: input.colors ?? 4,
+        detail: input.detail ?? 0.5,
+        minArea: input.minArea ?? 20,
+      },
+      options,
+    );
+    return data.vectorizeImage;
   }
 
   async generateVariations(
     document: PatternDocument,
     palette: string[],
     seed: number,
+    options?: RequestOptions,
   ): Promise<Variations> {
     const data = await this.graphql.request<{ generateVariations: Variations }>(
       `mutation Variations($document: JSON!, $palette: [String!]!, $seed: Int!) {
@@ -181,25 +329,148 @@ export class PatronlabApi {
          }
        }`,
       { document, palette, seed },
+      options,
     );
     return data.generateVariations;
+  }
+
+  async evolveVariations(
+    input: {
+      document: PatternDocument;
+      palette: string[];
+      favorites?: PatternDocument[];
+      weights?: WeightsInput;
+      seed?: number;
+    },
+    options?: RequestOptions,
+  ): Promise<EvolvedVariations> {
+    const data = await this.graphql.request<{ evolveVariations: EvolvedVariations }>(
+      `mutation Evolve(
+         $document: JSON!,
+         $palette: [String!]!,
+         $favorites: [JSON!] = [],
+         $weights: WeightsInput,
+         $seed: Int = 0
+       ) {
+         evolveVariations(
+           document: $document,
+           palette: $palette,
+           favorites: $favorites,
+           weights: $weights,
+           seed: $seed
+         ) {
+           original { ${SCORE} }
+           variations { document score { ${SCORE} } }
+           history { generation best average }
+         }
+       }`,
+      {
+        document: input.document,
+        palette: input.palette,
+        favorites: input.favorites ?? [],
+        weights: input.weights,
+        seed: input.seed ?? 0,
+      },
+      options,
+    );
+    return data.evolveVariations;
+  }
+
+  async paretoVariations(
+    document: PatternDocument,
+    palette: string[],
+    seed = 0,
+    options?: RequestOptions,
+  ): Promise<ParetoVariationsResult> {
+    const data = await this.graphql.request<{ paretoVariations: ParetoVariationsResult }>(
+      `mutation Pareto($document: JSON!, $palette: [String!]!, $seed: Int!) {
+         paretoVariations(document: $document, palette: $palette, seed: $seed) {
+           points { document balance contrast materialSaving }
+           elapsedMs
+         }
+       }`,
+      { document, palette, seed },
+      options,
+    );
+    return data.paretoVariations;
   }
 
   async optimizeLayout(
     document: PatternDocument,
     rollWidth: number,
     spacing: number,
+    extra?: OptimizeLayoutOptions,
+    options?: RequestOptions,
   ): Promise<Layout> {
+    if (!extra) {
+      const data = await this.graphql.request<{ optimizeLayout: Layout }>(
+        `mutation Layout($document: JSON!, $rollWidth: Float!, $spacing: Float!) {
+           optimizeLayout(document: $document, rollWidth: $rollWidth, spacing: $spacing) {
+             placements { shapeId x y width height rotated }
+             usedLength wastePercent baselineLength baselineWastePercent
+             cutOrder cutTravel baselineCutTravel
+           }
+         }`,
+        { document, rollWidth, spacing },
+        options,
+      );
+      return data.optimizeLayout;
+    }
     const data = await this.graphql.request<{ optimizeLayout: Layout }>(
-      `mutation Layout($document: JSON!, $rollWidth: Float!, $spacing: Float!) {
-         optimizeLayout(document: $document, rollWidth: $rollWidth, spacing: $spacing) {
+      `mutation Layout(
+         $document: JSON!,
+         $rollWidth: Float!,
+         $spacing: Float!,
+         $perLayer: Boolean = false,
+         $sheetWidth: Float,
+         $sheetHeight: Float,
+         $method: LayoutMethod = SKYLINE
+       ) {
+         optimizeLayout(
+           document: $document,
+           rollWidth: $rollWidth,
+           spacing: $spacing,
+           perLayer: $perLayer,
+           sheetWidth: $sheetWidth,
+           sheetHeight: $sheetHeight,
+           method: $method
+         ) {
            placements { shapeId x y width height rotated }
            usedLength wastePercent baselineLength baselineWastePercent
            cutOrder cutTravel baselineCutTravel
+           method
+           layers {
+             layerId color areaCm2 usedLength wastePercent sheets
+             placements { shapeId x y width height rotated }
+           }
          }
        }`,
-      { document, rollWidth, spacing },
+      {
+        document,
+        rollWidth,
+        spacing,
+        perLayer: extra.perLayer ?? false,
+        sheetWidth: extra.sheetWidth,
+        sheetHeight: extra.sheetHeight,
+        method: extra.method ?? 'SKYLINE',
+      },
+      options,
     );
     return data.optimizeLayout;
+  }
+
+  async analyzeColors(document: PatternDocument, options?: RequestOptions): Promise<ColorAnalysis> {
+    const data = await this.graphql.request<{ analyzeColors: ColorAnalysis }>(
+      `mutation AnalyzeColors($document: JSON!) {
+         analyzeColors(document: $document) {
+           pairs { a b deltaE tooSimilar }
+           names { hex name }
+           harmonies
+         }
+       }`,
+      { document },
+      options,
+    );
+    return data.analyzeColors;
   }
 }

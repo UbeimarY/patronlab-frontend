@@ -14,6 +14,7 @@ describe('EditorStore', () => {
   it('is clean after loading and dirty after an edit', () => {
     const store = loaded();
     expect(store.saveState()).toBe('saved');
+    expect(store.document().schemaVersion).toBe(2);
     store.addShape('star', 50, 50);
     expect(store.dirty()).toBe(true);
   });
@@ -70,5 +71,46 @@ describe('EditorStore', () => {
     expect(store.document().shapes[0].id).toBe(copy.id);
     store.deleteSelected();
     expect(store.document().shapes.map((s) => s.id)).toEqual([first.id]);
+  });
+
+  it('manages Barniz layers, Bisturí path nodes, radial symmetry and multi-selection', () => {
+    const store = new EditorStore();
+    store.load({
+      id: 'b1',
+      name: 'Plato',
+      material: 'mopa-mopa',
+      currentVersion: 1,
+      document: {
+        schemaVersion: 2,
+        mode: 'barniz',
+        width: 300,
+        height: 300,
+        background: '#1b1512',
+        object: { kind: 'plate', width: 300, height: 300, baseColor: '#1b1512', leaf: 'gold' },
+        layers: [{ id: 'l-1', name: 'Rojo', color: '#b3202a', visible: true, locked: false }],
+        groups: [],
+        shapes: [],
+      },
+    });
+
+    const path = store.addPath([
+      [150, 60],
+      [170, 90],
+      [130, 90],
+    ])!;
+    expect(path.layerId).toBe('l-1');
+    expect(path.points?.length).toBe(3);
+
+    store.insertPathNode(1, [10, 0]);
+    expect(store.selected()!.points?.length).toBe(4);
+    store.deletePathNode(1);
+    expect(store.selected()!.points?.length).toBe(3);
+
+    store.setRadialSymmetry(6, true);
+    expect(store.document().shapes.length).toBe(6);
+
+    // Undo restores pre-radial state
+    store.undo();
+    expect(store.document().shapes.length).toBe(1);
   });
 });
