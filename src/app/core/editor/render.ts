@@ -1,5 +1,6 @@
 import { PatternDocument, Shape } from './document';
 import { Point, handlePositions, outline } from './geometry';
+import { Guides } from './snapping';
 
 /** Canvas pixels per millimeter at zoom 1 (before the device pixel ratio). */
 export const BASE_PX_PER_MM = 2;
@@ -122,5 +123,33 @@ export function renderThumbnail(canvas: HTMLCanvasElement, document: PatternDocu
   ctx.fillStyle = document.background;
   ctx.fillRect(0, 0, document.width * scale, document.height * scale);
   drawShapes(ctx, document, scale);
+  ctx.restore();
+}
+
+export const GUIDE_COLOR = '#e0457b';
+
+/** Smart guides across the whole material, drawn under the moving piece. */
+export function drawGuides(
+  ctx: CanvasRenderingContext2D,
+  guides: Guides,
+  document: PatternDocument,
+  scale: number,
+  pixel: number,
+): void {
+  if (guides.x === null && guides.y === null) return;
+  ctx.save();
+  ctx.strokeStyle = GUIDE_COLOR;
+  ctx.lineWidth = 1.5 * pixel;
+  ctx.setLineDash([6 * pixel, 4 * pixel]);
+  ctx.beginPath();
+  if (guides.x !== null) {
+    ctx.moveTo(guides.x * scale, 0);
+    ctx.lineTo(guides.x * scale, document.height * scale);
+  }
+  if (guides.y !== null) {
+    ctx.moveTo(0, guides.y * scale);
+    ctx.lineTo(document.width * scale, guides.y * scale);
+  }
+  ctx.stroke();
   ctx.restore();
 }
