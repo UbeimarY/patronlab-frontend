@@ -32,6 +32,7 @@ import {
   fallbackVectorize,
 } from '../../../core/editor/barniz-ai';
 import { cutPlanSvg, drawCutPlan } from '../../../core/editor/cut-plan';
+import { ComposedDesign, designFromText } from '../../../core/editor/design-composer';
 import {
   ANILINE_COLORS,
   BarnizLayer,
@@ -56,6 +57,26 @@ export class AiPanel {
   readonly mm = mm;
   readonly percent = percent;
   readonly isBarniz = computed(() => this.store.document().mode === 'barniz');
+
+  // 0. Draw a design from a phrase (local parser + composer, no external service)
+  designText = '';
+  private designSeed = 0;
+  readonly design = signal<ComposedDesign | null>(null);
+  readonly designMissed = signal(false);
+  readonly designExamples = [
+    {
+      label: 'Colibrí y flores',
+      text: 'Un plato con un colibrí azul al centro y ocho flores rojas alrededor, con puntos dorados en el borde',
+    },
+    {
+      label: 'Páramo en bandeja',
+      text: 'Una bandeja de 40 x 25 cm con tres frailejones, un sol arriba y una greca roja en el borde',
+    },
+    {
+      label: 'Cuenco del sol',
+      text: 'Un cuenco con un sol al centro rodeado de doce estrellas amarillas y hojas verdes',
+    },
+  ];
 
   // 1. Sketch to mopa-mopa layers (vectorizeImage)
   vecColors = 4;
@@ -277,11 +298,29 @@ export class AiPanel {
     await this.runVectorize();
   }
 
+  // ---------- 0. Dibujar desde una frase ----------
+
+  drawFromText(text = this.designText, newVersion = false): void {
+    this.designText = text;
+    this.designSeed = newVersion ? this.designSeed + 1 : 0;
+    const result = designFromText(text, this.designSeed);
+    this.design.set(result);
+    this.designMissed.set(!result && text.trim().length > 0);
+  }
+
+  useDesign(): void {
+    const result = this.design();
+    if (result) this.applyWithLayerAnimation(result.document);
+  }
+
   applyVectorizedLayers(): void {
     const preview = this.vectorizePreviewDoc();
-    if (!preview) return;
+    if (preview) this.applyWithLayerAnimation(preview);
+  }
+
+  /** One undo step; then the laminas appear one by one, as they would be laid on the wood. */
+  private applyWithLayerAnimation(preview: PatternDocument): void {
     this.clearAnimationTimers();
-    // Single undo step in EditorStore
     this.store.apply(preview);
     const totalLayers = preview.layers?.length ?? 0;
     if (totalLayers > 1) {

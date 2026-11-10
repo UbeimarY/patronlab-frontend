@@ -76,6 +76,52 @@ h4 {
   background: var(--paper-2);
 }
 
+.phrase {
+  width: 100%;
+
+  textarea {
+    width: 100%;
+    min-height: 4.6rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    line-height: 1.4;
+    resize: vertical;
+
+    &:focus-visible {
+      outline-offset: 0;
+    }
+  }
+}
+
+.design-preview {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2);
+
+  .thumb {
+    width: min(220px, 100%);
+  }
+
+  .vec-details {
+    width: 100%;
+  }
+}
+
+.design-notes {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 2px;
+  font-size: 0.82rem;
+}
+
 .vec-details {
   display: grid;
   gap: 0.35rem;

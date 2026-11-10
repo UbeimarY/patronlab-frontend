@@ -1,3 +1,73 @@
+<!-- 0. Dibujar desde una frase -->
+<section class="block">
+  <h3>Dibujar desde una frase</h3>
+  <p class="muted">
+    Escribe qué quieres en el objeto y la IA lo dibuja con motivos de la región: figuras, cuántas,
+    de qué color y dónde. Funciona en el navegador, sin conexión.
+  </p>
+  <label class="phrase">
+    <span class="visually-hidden">Descripción del diseño</span>
+    <textarea
+      rows="3"
+      name="designText"
+      [(ngModel)]="designText"
+      (keydown.control.enter)="drawFromText()"
+      (keydown.meta.enter)="drawFromText()"
+      placeholder="Un plato con un colibrí azul al centro y flores rojas alrededor"
+    ></textarea>
+  </label>
+  <div class="row">
+    <button
+      class="btn small primary"
+      type="button"
+      (click)="drawFromText()"
+      [disabled]="!designText.trim()"
+    >
+      Dibujar
+    </button>
+    @for (example of designExamples; track example.label) {
+      <button class="btn small quiet" type="button" (click)="drawFromText(example.text)">
+        {{ example.label }}
+      </button>
+    }
+  </div>
+
+  @if (designMissed()) {
+    <p class="error-text" role="alert">
+      No encontré figuras para dibujar. Prueba con colibrí, flores, hojas, estrellas, sol, luna,
+      mariposa, pez, cuy, mazorca, corazón, frailejón, espirales, puntos o greca.
+    </p>
+  }
+
+  @if (design(); as result) {
+    <div class="design-preview">
+      <app-thumbnail
+        class="thumb"
+        [document]="result.document"
+        [size]="220"
+        label="Vista previa del diseño dibujado desde la frase"
+      />
+      <div class="vec-details">
+        <p class="small"><strong>Lo que entendí</strong></p>
+        <ul class="design-notes">
+          @for (note of result.notes; track $index) {
+            <li>{{ note }}</li>
+          }
+        </ul>
+        <div class="row">
+          <button class="btn small barniz" type="button" (click)="useDesign()">
+            Usar este diseño
+          </button>
+          <button class="btn small" type="button" (click)="drawFromText(designText, true)">
+            Otra versión
+          </button>
+        </div>
+        <p class="muted small">Reemplaza el diseño actual; puedes deshacerlo con Ctrl+Z.</p>
+      </div>
+    </div>
+  }
+</section>
+
 <!-- 1. De boceto a láminas (P0) -->
 <section class="block">
   <h3>De boceto a láminas de mopa-mopa</h3>
