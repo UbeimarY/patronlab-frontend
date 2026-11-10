@@ -69,10 +69,9 @@ export function drawShape(
 
   if (barnizMode) {
     ctx.save();
-    ctx.globalAlpha = leaf !== 'none' ? 0.86 : 0.92;
-    if (leaf !== 'none') {
-      ctx.globalCompositeOperation = 'multiply';
-    }
+    // Mopa-mopa sheets are nearly opaque: a hint of the metal leaf glows through,
+    // but the color stays saturated so every figure reads clearly.
+    ctx.globalAlpha = leaf !== 'none' ? 0.9 : 0.95;
     ctx.fillStyle = shape.fill;
     ctx.fill();
 

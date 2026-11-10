@@ -5,8 +5,20 @@ import {
   PatternMode,
   Shape,
   migrateDocument,
+  round,
   syncRadialGroups,
 } from './document';
+import {
+  Pt,
+  flower,
+  leafShape,
+  mirrorX,
+  place,
+  ribbon,
+  roundCorners,
+  smoothClosed,
+  smoothOpen,
+} from './motifs';
 
 export interface Template {
   id: string;
@@ -21,6 +33,79 @@ const STROKE = '#2b2420';
 function shape(partial: Omit<Shape, 'stroke'>): Shape {
   return { ...partial, stroke: STROKE };
 }
+
+/**
+ * A `path` shape from document-space points (a sampled curve), centered on its
+ * bounding box like the Bisturí does, rounded to 0.1 mm without repeated points.
+ */
+function curved(
+  id: string,
+  docPoints: readonly Pt[],
+  fill: string,
+  layerId: string,
+  groupId: string | null = null,
+): Shape {
+  const xs = docPoints.map(([x]) => x);
+  const ys = docPoints.map(([, y]) => y);
+  const cx = round((Math.min(...xs) + Math.max(...xs)) / 2);
+  const cy = round((Math.min(...ys) + Math.max(...ys)) / 2);
+  const points: [number, number][] = [];
+  for (const [x, y] of docPoints) {
+    const p: [number, number] = [round(x - cx), round(y - cy)];
+    const prev = points[points.length - 1];
+    if (!prev || prev[0] !== p[0] || prev[1] !== p[1]) points.push(p);
+  }
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (points.length > 3 && first[0] === last[0] && first[1] === last[1]) points.pop();
+  return shape({
+    id,
+    kind: 'path',
+    x: cx,
+    y: cy,
+    width: 0,
+    height: 0,
+    rotation: 0,
+    fill,
+    layerId,
+    groupId,
+    points,
+  });
+}
+
+function dot(
+  id: string,
+  x: number,
+  y: number,
+  d: number,
+  fill: string,
+  layerId: string,
+  groupId: string | null = null,
+): Shape {
+  return shape({
+    id,
+    kind: 'ellipse',
+    x: round(x),
+    y: round(y),
+    width: round(d),
+    height: round(d),
+    rotation: 0,
+    fill,
+    layerId,
+    groupId,
+  });
+}
+
+const C = {
+  gold: '#e0a526',
+  red: '#c0262f',
+  green: '#2f8a3f',
+  blue: '#2a6fb8',
+  turquoise: '#1f9a90',
+  orange: '#e0642a',
+  olive: '#7d8f3a',
+  magenta: '#a83a7c',
+};
 
 function buildBarnizDoc(
   object: BarnizObject,
@@ -163,7 +248,8 @@ export const TEMPLATES: Template[] = [
     id: 'barniz-hummingbird',
     mode: 'barniz',
     label: 'Plato con colibrí y flores (inspirado en la región)',
-    description: 'Plato de 300 mm con pan de oro, colibrí central a bisturí y corona floral.',
+    description:
+      'Plato de 300 mm con pan de oro: colibrí libando una flor de tubo y corona de flores y enredadera.',
     build: (custom) => {
       const obj: BarnizObject = {
         kind: custom?.kind ?? 'plate',
@@ -172,109 +258,181 @@ export const TEMPLATES: Template[] = [
         baseColor: custom?.baseColor ?? '#1b1512',
         leaf: custom?.leaf ?? 'gold',
       };
-      const scale = obj.width / 300;
+      const s = obj.width / 300;
       const cx = obj.width / 2;
       const cy = obj.width / 2;
+      /** Design units (300 mm plate, origin at the center) to document millimeters. */
+      const T = (pts: readonly Pt[], dx = 0, dy = 0, rot = 0, k = 1) =>
+        place(place(pts, dx, dy, rot, k), cx, cy, 0, s);
+      const at = (x: number, y: number) => [cx + x * s, cy + y * s] as const;
+
+      // Bottom to top: leaves and body, wing, flowers and throat, gold details.
       const layers: BarnizLayer[] = [
-        { id: 'l-gold', name: 'Amarillo sol', color: '#d99b1e', visible: true, locked: false },
-        { id: 'l-green', name: 'Verde mopa-mopa', color: '#286b35', visible: true, locked: false },
-        { id: 'l-red', name: 'Rojo cochinilla', color: '#b3202a', visible: true, locked: false },
-        { id: 'l-blue', name: 'Azul añil', color: '#1f5fa0', visible: true, locked: false },
+        { id: 'l-green', name: 'Verde mopa-mopa', color: C.green, visible: true, locked: false },
+        { id: 'l-blue', name: 'Azul añil', color: C.blue, visible: true, locked: false },
+        { id: 'l-red', name: 'Rojo cochinilla', color: C.red, visible: true, locked: false },
+        { id: 'l-gold', name: 'Amarillo sol', color: C.gold, visible: true, locked: false },
       ];
+
+      // Hummingbird drawn facing right in its own frame, then placed on the plate.
+      const bird = { dx: -16, dy: 22, rot: -8, k: 0.9 };
+      const B = (pts: readonly Pt[]) => T(pts, bird.dx, bird.dy, bird.rot, bird.k);
+      const body = smoothClosed(
+        [
+          [20, -58],
+          [34, -62],
+          [46, -54],
+          [48, -42],
+          [42, -28],
+          [34, -8],
+          [20, 10],
+          [2, 22],
+          [-16, 30],
+          [-24, 26],
+          [-18, 12],
+          [-6, -6],
+          [4, -24],
+          [10, -40],
+          [13, -52],
+        ],
+        8,
+      );
+      const throat = smoothClosed(
+        [
+          [47, -40],
+          [44, -27],
+          [37, -13],
+          [31, -17],
+          [34, -29],
+          [40, -38],
+        ],
+        8,
+      );
+      const wing = smoothClosed(
+        [
+          [16, -22],
+          [10, -44],
+          [-4, -68],
+          [-28, -92],
+          [-46, -100],
+          [-42, -88],
+          [-54, -84],
+          [-36, -70],
+          [-48, -64],
+          [-28, -52],
+          [-38, -44],
+          [-18, -34],
+          [-20, -22],
+          [0, -10],
+        ],
+        8,
+      );
+      const tail = smoothClosed(
+        [
+          [-4, 8],
+          [-16, 22],
+          [-36, 32],
+          [-62, 38],
+          [-44, 46],
+          [-58, 68],
+          [-30, 50],
+          [-14, 36],
+          [-2, 20],
+        ],
+        8,
+      );
+      const beak = ribbon(
+        [
+          [44, -48],
+          [70, -46],
+          [98, -38],
+        ],
+        4.6,
+        1.2,
+        10,
+      );
+
+      // Trumpet flower (local frame: tube up, mouth down), turned toward the beak.
+      const trumpet = smoothClosed(
+        [
+          [0, -24],
+          [4, -20],
+          [5, -6],
+          [10, 8],
+          [16, 18],
+          [7, 15],
+          [0, 21],
+          [-7, 15],
+          [-16, 18],
+          [-10, 8],
+          [-5, -6],
+          [-4, -20],
+        ],
+        8,
+      );
+      const fl = { dx: 77, dy: -40, rot: 35, k: 0.95 };
+      const sepal = leafShape(16, 12, 0, 8).map(([x, y]) => [x, y - 22] as const);
+      const stamen = ribbon(
+        [
+          [0, 14],
+          [-2, 24],
+          [-1, 32],
+        ],
+        1.6,
+        1.2,
+        6,
+      );
+
+      const ringR = 118;
+      const vineAngle = 11.25;
+      const vineRad = (vineAngle * Math.PI) / 180;
+      const dotAngle = 7.5;
+      const dotRad = (dotAngle * Math.PI) / 180;
+
       const shapes: Shape[] = [
-        shape({
-          id: 'petal-src',
-          kind: 'leaf',
-          x: cx,
-          y: cy - 102 * scale,
-          width: 24 * scale,
-          height: 54 * scale,
-          rotation: 0,
-          fill: '#b3202a',
-          layerId: 'l-red',
-          groupId: 'g-petals',
-        }),
-        shape({
-          id: 'leaf-ring-src',
-          kind: 'leaf',
-          x: cx + 46 * scale,
-          y: cy - 88 * scale,
-          width: 18 * scale,
-          height: 44 * scale,
-          rotation: 30,
-          fill: '#286b35',
-          layerId: 'l-green',
-          groupId: 'g-leaves',
-        }),
-        shape({
-          id: 'hummingbird-body',
-          kind: 'path',
-          x: cx - 6 * scale,
-          y: cy + 6 * scale,
-          width: 0,
-          height: 0,
-          rotation: -12,
-          fill: '#286b35',
-          layerId: 'l-green',
-          points: [
-            [0, -36],
-            [18, -14],
-            [22, 16],
-            [8, 46],
-            [-8, 52],
-            [-14, 20],
-            [-18, -10],
-          ],
-        }),
-        shape({
-          id: 'hummingbird-wing',
-          kind: 'path',
-          x: cx - 28 * scale,
-          y: cy - 18 * scale,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#1f5fa0',
-          layerId: 'l-blue',
-          points: [
-            [22, 10],
-            [-42, -32],
-            [-54, -8],
-            [-24, 18],
-            [8, 24],
-          ],
-        }),
-        shape({
-          id: 'hummingbird-beak',
-          kind: 'path',
-          x: cx + 32 * scale,
-          y: cy - 26 * scale,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#d99b1e',
-          layerId: 'l-gold',
-          points: [
-            [-22, 4],
-            [28, -12],
-            [-18, 12],
-          ],
-        }),
-        shape({
-          id: 'flower-center',
-          kind: 'star',
-          x: cx + 62 * scale,
-          y: cy - 36 * scale,
-          width: 38 * scale,
-          height: 38 * scale,
-          rotation: 15,
-          fill: '#d99b1e',
-          layerId: 'l-gold',
-        }),
+        // Crown: eight flowers, a vine of alternating leaves and a ring of gold dots.
+        curved(
+          'vine-leaf',
+          T(leafShape(30, 12, 0.28), ringR * Math.sin(vineRad), -ringR * Math.cos(vineRad), 72),
+          C.green,
+          'l-green',
+          'g-vine',
+        ),
+        curved('crown-flower', T(flower(15, 5, 0.42), 0, -ringR), C.red, 'l-red', 'g-flowers'),
+        dot('crown-flower-eye', ...at(0, -ringR), 7 * s, C.gold, 'l-gold', 'g-flower-eyes'),
+        dot(
+          'rim-dot',
+          ...at(138 * Math.sin(dotRad), -138 * Math.cos(dotRad)),
+          4.5 * s,
+          C.gold,
+          'l-gold',
+          'g-rim',
+        ),
+
+        // Hummingbird
+        curved('bird-tail', B(tail), C.blue, 'l-blue'),
+        curved('bird-body', B(body), C.green, 'l-green'),
+        curved('bird-wing', B(wing), C.blue, 'l-blue'),
+        curved('bird-throat', B(throat), C.red, 'l-red'),
+        curved('bird-beak', B(beak), C.gold, 'l-gold'),
+        dot('bird-eye', ...(B([[36, -48]])[0] as [number, number]), 5.5 * s, C.gold, 'l-gold'),
+
+        // Flower the bird is feeding on
+        curved('flower-sepal', T(sepal, fl.dx, fl.dy, fl.rot, fl.k), C.green, 'l-green'),
+        curved('flower-tube', T(trumpet, fl.dx, fl.dy, fl.rot, fl.k), C.red, 'l-red'),
+        curved('flower-stamen', T(stamen, fl.dx, fl.dy, fl.rot, fl.k), C.gold, 'l-gold'),
       ];
       return buildBarnizDoc(obj, layers, shapes, [
-        { id: 'g-petals', kind: 'radial', count: 8, mirror: false, sourceId: 'petal-src' },
-        { id: 'g-leaves', kind: 'radial', count: 8, mirror: true, sourceId: 'leaf-ring-src' },
+        { id: 'g-vine', kind: 'radial', count: 16, mirror: true, sourceId: 'vine-leaf' },
+        { id: 'g-flowers', kind: 'radial', count: 8, mirror: false, sourceId: 'crown-flower' },
+        {
+          id: 'g-flower-eyes',
+          kind: 'radial',
+          count: 8,
+          mirror: false,
+          sourceId: 'crown-flower-eye',
+        },
+        { id: 'g-rim', kind: 'radial', count: 24, mirror: false, sourceId: 'rim-dot' },
       ]);
     },
   },
@@ -282,7 +440,8 @@ export const TEMPLATES: Template[] = [
     id: 'barniz-fret-box',
     mode: 'barniz',
     label: 'Caja con greca andina (inspirada en la región)',
-    description: 'Tapa de caja de 240 × 180 mm con greca escalonada y sol de los Pastos.',
+    description:
+      'Tapa de caja de 240 × 180 mm: sol de ocho rayos al centro y greca escalonada con espirales.',
     build: (custom) => {
       const obj: BarnizObject = {
         kind: custom?.kind ?? 'box',
@@ -291,121 +450,122 @@ export const TEMPLATES: Template[] = [
         baseColor: custom?.baseColor ?? '#1b1512',
         leaf: custom?.leaf ?? 'gold',
       };
-      const cx = obj.width / 2;
-      const cy = obj.height / 2;
+      const W = obj.width;
+      const H = obj.height;
+      const s = Math.min(W / 240, H / 180);
+      const cx = W / 2;
+      const cy = H / 2;
+
+      // Bottom to top: sun rays, steps and sun disc, spirals and sun heart.
       const layers: BarnizLayer[] = [
-        { id: 'l-1', name: 'Amarillo ocre', color: '#d99b1e', visible: true, locked: false },
-        { id: 'l-2', name: 'Rojo cochinilla', color: '#b3202a', visible: true, locked: false },
-        { id: 'l-3', name: 'Turquesa andino', color: '#1e7f7a', visible: true, locked: false },
+        { id: 'l-1', name: 'Amarillo ocre', color: C.gold, visible: true, locked: false },
+        { id: 'l-2', name: 'Rojo cochinilla', color: C.red, visible: true, locked: false },
+        { id: 'l-3', name: 'Turquesa andino', color: C.turquoise, visible: true, locked: false },
       ];
+
+      // Sun of eight long rays with eight short ones between them.
+      const R = 50;
+      const sunRays = Array.from({ length: 192 }, (_, i) => {
+        const t = (2 * Math.PI * i) / 192;
+        const long = 0.46 + 0.54 * Math.pow(Math.abs(Math.cos(4 * t)), 5);
+        const short = 0.46 + 0.22 * Math.pow(Math.abs(Math.sin(4 * t)), 5);
+        const r = R * Math.max(long, short);
+        return [r * Math.sin(t), -r * Math.cos(t)] as const;
+      });
+
+      // One stepped pyramid with softened corners, pointing up, base at y = 0.
+      const steps: Pt[] = [
+        [-18, 0],
+        [-18, -6],
+        [-12, -6],
+        [-12, -12],
+        [-6, -12],
+        [-6, -18],
+        [6, -18],
+        [6, -12],
+        [12, -12],
+        [12, -6],
+        [18, -6],
+        [18, 0],
+      ];
+      const pyramid = roundCorners(steps, 1);
+      // A coiled spiral hook (Archimedean) ending in a short tail.
+      const spiralSpine: Pt[] = Array.from({ length: 22 }, (_, i) => {
+        const t = i / 21;
+        const theta = Math.PI * 2.1 * (1 - t);
+        const r = 2 + 8 * (1 - t);
+        return [r * Math.cos(theta), r * Math.sin(theta)] as const;
+      });
+      const spiral = ribbon(spiralSpine, 4.2, 2.8, 4);
+      const rosette = flower(9, 4, 0.55, 96);
+
+      const T = (pts: readonly Pt[], x: number, y: number, rot = 0) => place(pts, x, y, rot, s);
+      const margin = 12 * s;
+      const corner = 26 * s;
+      const unit = 46 * s;
+      const span = W - 2 * (margin + corner);
+      const count = Math.max(2, Math.floor(span / unit));
+      const start = cx - ((count - 1) * unit) / 2;
+
       const shapes: Shape[] = [
-        shape({
-          id: 'sun-center',
-          kind: 'star',
-          x: cx,
-          y: cy,
-          width: 76,
-          height: 76,
-          rotation: 0,
-          fill: '#d99b1e',
-          layerId: 'l-1',
-        }),
-        shape({
-          id: 'inner-diamond',
-          kind: 'hexagon',
-          x: cx,
-          y: cy,
-          width: 36,
-          height: 36,
-          rotation: 30,
-          fill: '#b3202a',
-          layerId: 'l-2',
-        }),
-        shape({
-          id: 'step-fret-tl',
-          kind: 'path',
-          x: 48,
-          y: 42,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#1e7f7a',
-          layerId: 'l-3',
-          points: [
-            [-24, -18],
-            [24, -18],
-            [24, -6],
-            [4, -6],
-            [4, 6],
-            [-10, 6],
-            [-10, 18],
-            [-24, 18],
-          ],
-        }),
-        shape({
-          id: 'step-fret-tr',
-          kind: 'path',
-          x: obj.width - 48,
-          y: 42,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#1e7f7a',
-          layerId: 'l-3',
-          points: [
-            [-24, -18],
-            [24, -18],
-            [24, 18],
-            [10, 18],
-            [10, 6],
-            [-4, 6],
-            [-4, -6],
-            [-24, -6],
-          ],
-        }),
-        shape({
-          id: 'step-fret-bl',
-          kind: 'path',
-          x: 48,
-          y: obj.height - 42,
-          width: 0,
-          height: 0,
-          rotation: 180,
-          fill: '#b3202a',
-          layerId: 'l-2',
-          points: [
-            [-24, -18],
-            [24, -18],
-            [24, 18],
-            [10, 18],
-            [10, 6],
-            [-4, 6],
-            [-4, -6],
-            [-24, -6],
-          ],
-        }),
-        shape({
-          id: 'step-fret-br',
-          kind: 'path',
-          x: obj.width - 48,
-          y: obj.height - 42,
-          width: 0,
-          height: 0,
-          rotation: 180,
-          fill: '#b3202a',
-          layerId: 'l-2',
-          points: [
-            [-24, -18],
-            [24, -18],
-            [24, -6],
-            [4, -6],
-            [4, 6],
-            [-10, 6],
-            [-10, 18],
-            [-24, 18],
-          ],
-        }),
+        curved('sun-rays', T(sunRays, cx, cy), C.gold, 'l-1'),
+        curved('sun-disc', T(flower(25, 16, 0.12, 160), cx, cy), C.red, 'l-2'),
+        curved('sun-heart', T(flower(12, 8, 0.45, 120), cx, cy), C.turquoise, 'l-3'),
       ];
+      const topY = margin + 22 * s;
+      const bottomY = H - margin - 22 * s;
+      for (let i = 0; i < count; i++) {
+        const x = start + i * unit;
+        shapes.push(
+          curved(`fret-top-${i + 1}`, T(pyramid, x, topY), C.red, 'l-2'),
+          curved(`fret-bottom-${i + 1}`, T(pyramid, x, bottomY, 180), C.red, 'l-2'),
+        );
+        if (i < count - 1) {
+          const sx = x + unit / 2;
+          const right = i % 2 === 0;
+          const sp = right ? spiral : mirrorX(spiral);
+          shapes.push(
+            curved(`spiral-top-${i + 1}`, T(sp, sx, topY - 8 * s), C.turquoise, 'l-3'),
+            curved(`spiral-bottom-${i + 1}`, T(sp, sx, bottomY + 8 * s, 180), C.turquoise, 'l-3'),
+          );
+        }
+      }
+      const cornerX = margin + 12 * s;
+      const cornerY = margin + 12 * s;
+      (
+        [
+          [cornerX, cornerY],
+          [W - cornerX, cornerY],
+          [cornerX, H - cornerY],
+          [W - cornerX, H - cornerY],
+        ] as const
+      ).forEach(([x, y], i) =>
+        shapes.push(curved(`corner-${i + 1}`, T(rosette, x, y, 45), C.gold, 'l-1')),
+      );
+      // Side diamonds framing the sun
+      [-1, 1].forEach((side, i) => {
+        const x = cx + side * (W / 2 - margin - 12 * s);
+        shapes.push(
+          curved(
+            `side-${i + 1}`,
+            T(
+              roundCorners(
+                [
+                  [0, -14],
+                  [8, 0],
+                  [0, 14],
+                  [-8, 0],
+                ],
+                2,
+              ),
+              x,
+              cy,
+            ),
+            C.turquoise,
+            'l-3',
+          ),
+        );
+      });
       return buildBarnizDoc(obj, layers, shapes);
     },
   },
@@ -413,7 +573,8 @@ export const TEMPLATES: Template[] = [
     id: 'barniz-galeras-tray',
     mode: 'barniz',
     label: 'Bandeja Galeras y frailejones (inspirada en la región)',
-    description: 'Bandeja de 360 × 240 mm con silueta del volcán Galeras y rosetas de páramo.',
+    description:
+      'Bandeja de 360 × 240 mm: volcán Galeras con fumarola, sol andino, lomas y frailejones de páramo.',
     build: (custom) => {
       const obj: BarnizObject = {
         kind: custom?.kind ?? 'tray',
@@ -422,83 +583,174 @@ export const TEMPLATES: Template[] = [
         baseColor: custom?.baseColor ?? '#15191d',
         leaf: custom?.leaf ?? 'gold',
       };
+      const sx = obj.width / 360;
+      const sy = obj.height / 240;
+      const k = Math.min(sx, sy);
+      /** Scene coordinates (360 × 240) to document millimeters. */
+      const S = (pts: readonly Pt[]) => pts.map(([x, y]) => [x * sx, y * sy] as const);
+      /** A motif drawn in its own frame, placed at a scene point without distortion. */
+      const M = (pts: readonly Pt[], x: number, y: number, rot = 0, scale = 1) =>
+        place(pts, x * sx, y * sy, rot, k * scale);
+
+      // Bottom to top: volcano, hills, páramo, fumarole, sun and flowers.
       const layers: BarnizLayer[] = [
-        { id: 'l-sky', name: 'Amarillo alborada', color: '#d99b1e', visible: true, locked: false },
-        { id: 'l-mountain', name: 'Azul Galeras', color: '#1f5fa0', visible: true, locked: false },
-        { id: 'l-paramo', name: 'Verde frailejón', color: '#286b35', visible: true, locked: false },
-        { id: 'l-lava', name: 'Rojo cochinilla', color: '#b3202a', visible: true, locked: false },
+        { id: 'l-mountain', name: 'Azul Galeras', color: C.blue, visible: true, locked: false },
+        {
+          id: 'l-hills',
+          name: 'Verde oliva natural',
+          color: C.olive,
+          visible: true,
+          locked: false,
+        },
+        { id: 'l-paramo', name: 'Verde frailejón', color: C.green, visible: true, locked: false },
+        { id: 'l-lava', name: 'Rojo cochinilla', color: C.red, visible: true, locked: false },
+        { id: 'l-sky', name: 'Amarillo alborada', color: C.gold, visible: true, locked: false },
       ];
+
+      // Smooth skyline profiles closed with straight edges flush with the tray.
+      const ground = (profile: readonly Pt[]): Pt[] => [
+        ...smoothOpen(profile, 8),
+        [360, 240],
+        [0, 240],
+      ];
+      const volcano = ground([
+        [0, 190],
+        [30, 176],
+        [80, 140],
+        [122, 104],
+        [148, 82],
+        [162, 74],
+        [172, 82],
+        [186, 82],
+        [196, 72],
+        [214, 84],
+        [246, 110],
+        [290, 146],
+        [334, 172],
+        [360, 180],
+      ]);
+      const hills = ground([
+        [0, 198],
+        [40, 186],
+        [96, 192],
+        [150, 210],
+        [204, 204],
+        [256, 186],
+        [312, 182],
+        [360, 190],
+      ]);
+      // Fumarole: a short column of smoke that billows into puffs drifting west.
+      const smokeColumn = ribbon(
+        [
+          [180, 80],
+          [178, 70],
+          [181, 62],
+        ],
+        6,
+        10,
+        6,
+      );
+      const puffs: [number, number, number][] = [
+        [181, 58, 8],
+        [171, 44, 11],
+        [186, 30, 12],
+        [163, 22, 10],
+        [146, 26, 7],
+      ];
+      // Sun with wavy flame rays
+      const sun = polarSun(30);
+
+      // Frailejón: a stout shaggy trunk, a fan rosette of furry leaves and two flower stalks.
+      const trunk = smoothClosed(
+        Array.from({ length: 14 }, (_, i) => {
+          const side = i < 7 ? 1 : -1;
+          const j = i < 7 ? i : 13 - i;
+          const y = -j * 4.6;
+          const shag = j % 2 === 0 ? 1.6 : 0;
+          return [side * (7.5 - j * 0.3 + shag), y] as const;
+        }),
+        5,
+      );
+      const rosette = Array.from({ length: 180 }, (_, i) => {
+        const t = (2 * Math.PI * i) / 180;
+        const up = Math.cos(t) > -0.15 ? 1 : 0.5;
+        const r = 26 * up * (0.42 + 0.58 * Math.pow(Math.abs(Math.cos(5.5 * t)), 1.2));
+        return [r * Math.sin(t), -34 - r * Math.cos(t) * 0.85] as const;
+      });
+
+      const stalk = (dir: number): Pt[] =>
+        ribbon(
+          [
+            [dir * 3, -48],
+            [dir * 10, -62],
+            [dir * 13, -72],
+          ],
+          2.4,
+          1.6,
+          6,
+        );
+
       const shapes: Shape[] = [
-        shape({
-          id: 'sun-disc',
-          kind: 'ellipse',
-          x: 235,
-          y: 72,
-          width: 58,
-          height: 58,
-          rotation: 0,
-          fill: '#d99b1e',
-          layerId: 'l-sky',
-        }),
-        shape({
-          id: 'volcano-peak',
-          kind: 'path',
-          x: 180,
-          y: 138,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#1f5fa0',
-          layerId: 'l-mountain',
-          points: [
-            [-150, 56],
-            [-42, -48],
-            [-12, -40],
-            [18, -52],
-            [150, 56],
-          ],
-        }),
-        shape({
-          id: 'plume',
-          kind: 'path',
-          x: 176,
-          y: 62,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#b3202a',
-          layerId: 'l-lava',
-          points: [
-            [-8, 22],
-            [-24, -6],
-            [0, -24],
-            [28, -10],
-            [8, 20],
-          ],
-        }),
-        shape({
-          id: 'frailejon-left',
-          kind: 'star',
-          x: 82,
-          y: 175,
-          width: 62,
-          height: 62,
-          rotation: 12,
-          fill: '#286b35',
-          layerId: 'l-paramo',
-        }),
-        shape({
-          id: 'frailejon-right',
-          kind: 'star',
-          x: 282,
-          y: 178,
-          width: 56,
-          height: 56,
-          rotation: -15,
-          fill: '#286b35',
-          layerId: 'l-paramo',
-        }),
+        curved('volcano', S(volcano), C.blue, 'l-mountain'),
+        curved(
+          'crater-rim',
+          S(
+            smoothClosed(
+              [
+                [150, 84],
+                [162, 76],
+                [172, 86],
+                [186, 86],
+                [196, 76],
+                [208, 86],
+                [192, 96],
+                [176, 92],
+                [160, 96],
+              ],
+              6,
+            ),
+          ),
+          C.olive,
+          'l-hills',
+        ),
+        curved('hills', S(hills), C.olive, 'l-hills'),
+        curved('fumarole-column', S(smokeColumn), C.red, 'l-lava'),
+        ...puffs.map(([x, y, r], i) =>
+          curved(
+            `fumarole-puff-${i + 1}`,
+            M(flower(r, 7, 0.14, 84), x, y, i * 17),
+            C.red,
+            'l-lava',
+          ),
+        ),
+        curved('sun', M(sun, 296, 58), C.gold, 'l-sky'),
       ];
+      (
+        [
+          ['left', 62, 214, 1.15],
+          ['mid', 112, 222, 0.8],
+          ['right', 292, 212, 1.05],
+        ] as const
+      ).forEach(([name, x, y, scale]) => {
+        shapes.push(
+          curved(`frailejon-${name}-trunk`, M(trunk, x, y, 0, scale), C.green, 'l-paramo'),
+          curved(`frailejon-${name}-rosette`, M(rosette, x, y, 0, scale), C.green, 'l-paramo'),
+          curved(`frailejon-${name}-stalk-l`, M(stalk(-1), x, y, 0, scale), C.gold, 'l-sky'),
+          curved(`frailejon-${name}-stalk-r`, M(stalk(1), x, y, 0, scale), C.gold, 'l-sky'),
+          curved(
+            `frailejon-${name}-flower-l`,
+            M(place(flower(5.5, 6, 0.4, 48), -13, -74), x, y, 0, scale),
+            C.gold,
+            'l-sky',
+          ),
+          curved(
+            `frailejon-${name}-flower-r`,
+            M(place(flower(5.5, 6, 0.4, 48), 13, -74), x, y, 0, scale),
+            C.gold,
+            'l-sky',
+          ),
+        );
+      });
       return buildBarnizDoc(obj, layers, shapes);
     },
   },
@@ -506,7 +758,8 @@ export const TEMPLATES: Template[] = [
     id: 'barniz-radial-bowl',
     mode: 'barniz',
     label: 'Cuenco radial de mopa-mopa (inspirado en la región)',
-    description: 'Cuenco circular de 260 mm con simetría radial de 12 pétalos y espejo.',
+    description:
+      'Cuenco circular de 260 mm: mandala de 12 llamas en espejo, corona de pétalos y flor central.',
     build: (custom) => {
       const obj: BarnizObject = {
         kind: custom?.kind ?? 'bowl',
@@ -515,60 +768,47 @@ export const TEMPLATES: Template[] = [
         baseColor: custom?.baseColor ?? '#1b1512',
         leaf: custom?.leaf ?? 'silver',
       };
+      const s = obj.width / 260;
       const cx = obj.width / 2;
       const cy = obj.width / 2;
+      const T = (pts: readonly Pt[], dx = 0, dy = 0, rot = 0) =>
+        place(place(pts, dx, dy, rot), cx, cy, 0, s);
+      const polarAt = (r: number, deg: number) => {
+        const a = (deg * Math.PI) / 180;
+        return [r * Math.sin(a), -r * Math.cos(a)] as const;
+      };
+
+      // Bottom to top: flames, petals and dots, leaves and center.
       const layers: BarnizLayer[] = [
-        { id: 'l-1', name: 'Naranja fuego', color: '#d45b24', visible: true, locked: false },
-        { id: 'l-2', name: 'Amarillo ocre', color: '#d99b1e', visible: true, locked: false },
-        { id: 'l-3', name: 'Verde mopa-mopa', color: '#286b35', visible: true, locked: false },
+        { id: 'l-1', name: 'Naranja fuego', color: C.orange, visible: true, locked: false },
+        { id: 'l-2', name: 'Amarillo ocre', color: C.gold, visible: true, locked: false },
+        { id: 'l-3', name: 'Verde mopa-mopa', color: C.green, visible: true, locked: false },
       ];
+      const [dotX, dotY] = polarAt(112, 15);
+      const [leafX, leafY] = polarAt(60, 15);
       const shapes: Shape[] = [
-        shape({
-          id: 'outer-ray',
-          kind: 'leaf',
-          x: cx,
-          y: cy - 78,
-          width: 22,
-          height: 62,
-          rotation: 10,
-          fill: '#d45b24',
-          layerId: 'l-1',
-          groupId: 'g-rays',
-        }),
-        shape({
-          id: 'inner-petal',
-          kind: 'path',
-          x: cx,
-          y: cy - 42,
-          width: 0,
-          height: 0,
-          rotation: 0,
-          fill: '#d99b1e',
-          layerId: 'l-2',
-          groupId: 'g-inner',
-          points: [
-            [0, -22],
-            [12, 0],
-            [0, 22],
-            [-12, 0],
-          ],
-        }),
-        shape({
-          id: 'bowl-core',
-          kind: 'hexagon',
-          x: cx,
-          y: cy,
-          width: 34,
-          height: 34,
-          rotation: 0,
-          fill: '#286b35',
-          layerId: 'l-3',
-        }),
+        curved('outer-flame', T(leafShape(50, 19, 0.4), 0, -88), C.orange, 'l-1', 'g-rays'),
+        curved('inner-petal', T(leafShape(32, 15, 0), 0, -44), C.gold, 'l-2', 'g-inner'),
+        dot('rim-dot', cx + dotX * s, cy + dotY * s, 7 * s, C.gold, 'l-2', 'g-dots'),
+        curved('ring-leaf', T(leafShape(16, 7, 0), leafX, leafY, 15), C.green, 'l-3', 'g-leaves'),
+        curved('bowl-core', T(flower(22, 8, 0.38)), C.green, 'l-3'),
       ];
       return buildBarnizDoc(obj, layers, shapes, [
-        { id: 'g-rays', kind: 'radial', count: 12, mirror: true, sourceId: 'outer-ray' },
-        { id: 'g-inner', kind: 'radial', count: 6, mirror: false, sourceId: 'inner-petal' },
+        { id: 'g-rays', kind: 'radial', count: 12, mirror: true, sourceId: 'outer-flame' },
+        { id: 'g-inner', kind: 'radial', count: 12, mirror: false, sourceId: 'inner-petal' },
+        { id: 'g-dots', kind: 'radial', count: 12, mirror: false, sourceId: 'rim-dot' },
+        { id: 'g-leaves', kind: 'radial', count: 12, mirror: false, sourceId: 'ring-leaf' },
       ]);
     },
   },
 ];
+
+/** A sun disc with twelve wavy flame rays. */
+function polarSun(r: number): Pt[] {
+  return Array.from({ length: 192 }, (_, i) => {
+    const t = (2 * Math.PI * i) / 192;
+    const wave = Math.sin(12 * t + 0.6 * Math.sin(24 * t));
+    const radius = r * (0.74 + 0.26 * Math.max(0, wave));
+    return [radius * Math.sin(t), -radius * Math.cos(t)] as const;
+  });
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { MAX_PATH_POINTS } from './document';
+import { boundingBox } from './geometry';
 import { TEMPLATES } from './templates';
 
 describe('TEMPLATES', () => {
@@ -15,6 +17,40 @@ describe('TEMPLATES', () => {
       expect(doc.object).not.toBeNull();
       expect((doc.layers ?? []).length).toBeGreaterThanOrEqual(3);
       expect(doc.shapes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws regional motifs with smooth curves inside the API path limits', () => {
+    for (const tpl of TEMPLATES.filter((t) => t.mode === 'barniz' && t.id !== 'barniz-blank')) {
+      const doc = tpl.build();
+      for (const s of doc.shapes.filter((shape) => shape.kind === 'path')) {
+        // No faceted 3–8 point polygons: every cut is a sampled curve or a softened outline.
+        expect(s.points!.length).toBeGreaterThanOrEqual(16);
+        expect(s.points!.length).toBeLessThanOrEqual(MAX_PATH_POINTS);
+        expect(s.layerId).toBeTruthy();
+      }
+      // Every lamina gets at least one piece to cut.
+      for (const layer of doc.layers ?? []) {
+        expect(doc.shapes.some((s) => s.layerId === layer.id)).toBe(true);
+      }
+    }
+  });
+
+  it('scales the tray and box motifs to a custom object size', () => {
+    for (const [id, width, height] of [
+      ['barniz-galeras-tray', 500, 200],
+      ['barniz-fret-box', 320, 240],
+    ] as const) {
+      const doc = TEMPLATES.find((t) => t.id === id)!.build({ width, height });
+      expect(doc.width).toBe(width);
+      expect(doc.height).toBe(height);
+      for (const s of doc.shapes) {
+        const box = boundingBox(s);
+        expect(box.minX).toBeGreaterThanOrEqual(-1);
+        expect(box.maxX).toBeLessThanOrEqual(width + 1);
+        expect(box.minY).toBeGreaterThanOrEqual(-1);
+        expect(box.maxY).toBeLessThanOrEqual(height + 1);
+      }
     }
   });
 
