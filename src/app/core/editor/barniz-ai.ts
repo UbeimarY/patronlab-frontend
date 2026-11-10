@@ -94,7 +94,7 @@ export function deltaE(hexA: string, hexB: string): number {
 
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
-  const n = parseInt(clean.length === 6 ? clean : '000000', 16);
+  const n = Number.parseInt(clean.length === 6 ? clean : '000000', 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 

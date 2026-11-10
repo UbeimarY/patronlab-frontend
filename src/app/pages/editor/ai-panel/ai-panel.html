@@ -498,12 +498,12 @@
         </dd>
       </div>
     </dl>
-    <canvas
-      #plan
-      class="plan"
-      role="img"
-      aria-label="Plan de corte: piezas acomodadas en el rollo, numeradas en el orden de corte"
-    ></canvas>
+    <figure class="plan-figure">
+      <canvas #plan class="plan"></canvas>
+      <figcaption class="visually-hidden">
+        Plan de corte: piezas acomodadas en el rollo, numeradas en el orden de corte
+      </figcaption>
+    </figure>
     <button class="btn small" type="button" (click)="downloadPlan()">
       Descargar plan a escala real (SVG)
     </button>

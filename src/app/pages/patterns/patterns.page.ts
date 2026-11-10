@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -26,7 +26,7 @@ import { Thumbnail } from '../../shared/thumbnail';
   templateUrl: './patterns.page.html',
   styleUrl: './patterns.page.scss',
 })
-export class PatternsPage {
+export class PatternsPage implements OnInit {
   private readonly api = inject(PatronlabApi);
   private readonly router = inject(Router);
   readonly session = inject(SessionStore);
@@ -119,7 +119,7 @@ export class PatternsPage {
   readonly creating = signal(false);
   readonly createError = signal<string | null>(null);
 
-  constructor() {
+  ngOnInit(): void {
     void this.load();
   }
 

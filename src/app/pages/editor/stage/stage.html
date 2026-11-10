@@ -2,7 +2,7 @@
   #viewport
   class="viewport"
   [class.barniz]="store.document().mode === 'barniz'"
-  tabindex="0"
+  tabindex="-1"
   role="application"
   aria-roledescription="mesa de diseño"
   [attr.aria-label]="'Mesa de diseño. ' + hint()"
@@ -19,9 +19,11 @@
     <canvas #shapes class="layer"></canvas>
     <canvas #interaction class="layer"></canvas>
   </div>
-  <canvas #rulerX class="ruler ruler--x" aria-hidden="true"></canvas>
-  <canvas #rulerY class="ruler ruler--y" aria-hidden="true"></canvas>
-  <span class="ruler-corner" aria-hidden="true">mm</span>
+  <div class="rulers" aria-hidden="true">
+    <canvas #rulerX class="ruler ruler--x"></canvas>
+    <canvas #rulerY class="ruler ruler--y"></canvas>
+    <span class="ruler-corner">mm</span>
+  </div>
   <p class="hint">{{ hint() }}</p>
 
   @if (knifePoints().length >= 3) {

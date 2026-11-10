@@ -109,6 +109,11 @@
 }
 
 /* Millimeter rulers along the top and left edges of the work area. */
+/* The wrapper only hides them from assistive tech; it adds no box to the layout. */
+.rulers {
+  display: contents;
+}
+
 .ruler {
   position: absolute;
   pointer-events: none;
