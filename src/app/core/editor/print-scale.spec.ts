@@ -14,4 +14,3 @@ describe('buildTiledPrintHtml', () => {
     expect(res.html).toContain('Escala 1:1');
   });
 });
-
