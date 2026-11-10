@@ -1,23 +1,29 @@
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
-.mat {
+/* ---------- Hero: the cutting mat with a felt sheet and a mopa-mopa plate ---------- */
+
+.hero {
   position: relative;
   display: grid;
-  align-content: space-between;
-  gap: 2rem;
-  padding: 2.5rem;
+  grid-template-rows: auto 1fr auto;
+  gap: 1.5rem;
+  padding: 2.25rem clamp(1.5rem, 4vw, 3.5rem);
+  overflow: hidden;
   color: #f4f7f5;
   background-color: var(--mat);
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.16) 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    radial-gradient(120% 80% at 80% 40%, rgb(255 255 255 / 0.07), transparent 60%),
+    linear-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.14) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
   background-size:
+    100% 100%,
     100px 100px,
     100px 100px,
     20px 20px,
@@ -25,17 +31,64 @@
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-self: start;
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.45rem;
+  text-decoration: none;
 }
 
-.plan {
-  width: min(100%, 520px);
-  justify-self: center;
+.brand-mark {
+  width: 34px;
+  height: 34px;
+
+  circle {
+    fill: #1b1411;
+    stroke: #e0b646;
+    stroke-width: 1.6;
+  }
+
+  .mark-petal {
+    fill: #c0262f;
+  }
+
+  .mark-leaf {
+    fill: #2f8a3f;
+
+    &.alt {
+      fill: #e0a526;
+    }
+  }
+}
+
+.badge {
+  padding: 0.1rem 0.45rem;
+  border: 1px solid rgb(240 194 59 / 0.6);
+  border-radius: 999px;
+  color: var(--chalk);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.felt {
+  width: min(88%, 500px);
+  filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.28));
+  transform: rotate(-3deg);
 }
 
 .sheet {
-  fill: #e6d7bd;
+  fill: #ece0c8;
   stroke: #1d2321;
   stroke-width: 1;
 }
@@ -43,34 +96,61 @@
 .piece {
   stroke: #1d2321;
   stroke-width: 1.2;
+  opacity: 0;
+  animation: place-piece 0.5s ease-out forwards;
 }
 
 .p1 {
-  fill: #7a2e1f;
+  fill: #b3202a;
+  animation-delay: 0.1s;
 }
 .p2 {
-  fill: #2e5e8c;
+  fill: #2f8a3f;
+  animation-delay: 0.2s;
 }
 .p3 {
-  fill: #3f6b3a;
+  fill: #2a6fb8;
+  animation-delay: 0.3s;
 }
 .p4 {
-  fill: #d9a441;
+  fill: #e0a526;
+  animation-delay: 0.35s;
 }
 .p5 {
+  fill: #e0a526;
+  animation-delay: 0.4s;
+}
+.p6 {
   fill: #9cae5b;
+  animation-delay: 0.5s;
 }
 
-/* The one animated moment: the cutting route traced once, like chalk on felt. */
+@keyframes place-piece {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The cutting route traced once, like chalk on felt, then the cut order appears. */
 .route {
   fill: none;
   stroke: var(--chalk);
-  stroke-width: 2.5;
+  stroke-width: 2.4;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 600;
-  stroke-dashoffset: 600;
-  animation: trace 2.4s 0.4s ease-out forwards;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: trace 2.2s 0.7s ease-in-out forwards;
 }
 
 @keyframes trace {
@@ -79,53 +159,410 @@
   }
 }
 
+.order {
+  opacity: 0;
+  animation: place-piece 0.4s 2.7s ease-out forwards;
+
+  circle {
+    fill: #1d2321;
+    stroke: var(--chalk);
+    stroke-width: 1.4;
+  }
+
+  text {
+    fill: #f7efe2;
+    font: 700 10px var(--font-ui);
+    text-anchor: middle;
+  }
+}
+
+.plate {
+  position: absolute;
+  right: max(0px, calc(50% - 300px));
+  bottom: -6%;
+  width: clamp(150px, 17vw, 230px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow:
+    0 22px 40px rgb(0 0 0 / 0.45),
+    0 0 0 6px rgb(27 20 17 / 0.35);
+  transform: rotate(8deg);
+  animation: fade-in 0.6s 0.2s ease-out both;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+  }
+}
+
+.copy {
+  display: grid;
+  gap: 1.25rem;
+}
+
 .claim {
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3vw, 2.4rem);
-  line-height: 1.2;
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  line-height: 1.15;
 }
+
+.features {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgb(244 247 245 / 0.86);
+
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  strong {
+    color: #fff;
+    font-weight: 650;
+  }
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 0.25);
+
+  &.gold {
+    background: #e0a526;
+  }
+  &.red {
+    background: #c0262f;
+  }
+  &.green {
+    background: #8cc7a9;
+  }
+}
+
+/* ---------- Panel: the form ---------- */
 
 .panel {
   display: grid;
-  place-items: center;
-  padding: 2rem 16px;
+  align-content: center;
+  justify-items: center;
+  gap: 1.25rem;
+  padding: 2.5rem 16px;
+  background:
+    radial-gradient(
+      90% 60% at 50% 0%,
+      color-mix(in srgb, var(--primary) 9%, transparent),
+      transparent 70%
+    ),
+    var(--paper);
+}
+
+.card {
+  display: grid;
+  gap: 1.5rem;
+  width: min(100%, 410px);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-2);
+  box-shadow: 0 24px 60px -30px rgb(0 0 0 / 0.45);
+}
+
+.switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+
+  a {
+    display: grid;
+    place-items: center;
+    min-height: 36px;
+    border-radius: 7px;
+    color: var(--muted);
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      background 0.15s,
+      color 0.15s;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &.active {
+      background: var(--primary);
+      color: var(--primary-ink);
+    }
+  }
 }
 
 form {
   display: grid;
-  gap: 1rem;
-  width: min(100%, 380px);
+  gap: 1.05rem;
+}
+
+.head {
+  display: grid;
+  gap: 0.4rem;
+
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.15rem);
+  }
 }
 
 .lead {
   color: var(--muted);
-  margin-top: -0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+
+    &::placeholder {
+      color: color-mix(in srgb, var(--muted) 75%, transparent);
+    }
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: var(--danger);
+    }
+  }
+}
+
+.optional {
+  margin-left: 0.25rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.password {
+  position: relative;
+
+  input {
+    padding-right: 2.9rem;
+  }
+}
+
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+
+  &:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+
+  .bars {
+    display: grid;
+    grid-template-columns: repeat(4, 22px);
+    gap: 4px;
+  }
+
+  i {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    transition: background 0.2s;
+  }
+
+  &[data-level='1'] i:nth-child(-n + 1) {
+    background: var(--danger);
+  }
+  &[data-level='2'] i:nth-child(-n + 2) {
+    background: var(--warn);
+  }
+  &[data-level='3'] i:nth-child(-n + 3) {
+    background: var(--good);
+  }
+  &[data-level='4'] i {
+    background: var(--good);
+  }
+}
+
+.error-box {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  font-size: 0.9rem;
 }
 
 .submit {
-  min-height: 42px;
+  min-height: 46px;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .switch {
   color: var(--muted);
   font-size: 0.925rem;
+  text-align: center;
+
+  a {
+    color: var(--ink);
+    font-weight: 600;
+  }
 }
 
-@media (max-width: 800px) {
+.craft-link {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+}
+
+/* ---------- Phones and narrow windows: a compact banner, the form in view ---------- */
+
+@media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
-  .mat {
-    padding: 1.25rem 16px;
-    gap: 1rem;
+  .hero {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 1rem 16px 1.25rem;
   }
 
-  .plan {
-    width: min(100%, 300px);
+  .brand {
+    grid-column: 1 / -1;
+    font-size: 1.25rem;
+  }
+
+  .art {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .felt,
+  .features {
+    display: none;
+  }
+
+  .plate {
+    position: static;
+    width: 92px;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.4);
+  }
+
+  .copy {
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .claim {
-    font-size: 1.35rem;
+    font-size: clamp(1.15rem, 5vw, 1.5rem);
+  }
+
+  .panel {
+    align-content: start;
+    padding: 1.5rem 16px 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece,
+  .order,
+  .plate,
+  .route {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
   }
 }

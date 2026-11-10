@@ -1,89 +1,257 @@
 <main class="layout">
-  <section class="mat" aria-hidden="true">
-    <p class="brand">PatronLab</p>
-    <svg class="plan" viewBox="0 0 320 220" role="presentation">
-      <rect class="sheet" x="10" y="10" width="300" height="200" rx="2" />
-      <polygon class="piece p1" points="30,30 110,30 110,95 30,95" />
-      <polygon
-        class="piece p2"
-        points="125,30 175,30 200,74 175,118 125,118 100,74"
-        transform="translate(20 0)"
-      />
-      <path class="piece p3" d="M245 25 C280 50 282 105 245 135 C208 105 210 50 245 25 Z" />
-      <polygon
-        class="piece p4"
-        points="70,110 82,140 114,140 88,158 98,190 70,171 42,190 52,158 26,140 58,140"
-      />
-      <ellipse class="piece p5" cx="190" cy="170" rx="44" ry="28" />
-      <polyline class="route" points="10,10 70,62 165,74 245,80 190,170 70,150" />
-    </svg>
-    <p class="claim">Diseña la pieza.<br />Prueba sus colores.<br />Corta sin desperdiciar.</p>
+  <section class="hero">
+    <a class="brand" routerLink="/entrar">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" />
+        <path d="M16 6c3 4 3 8 0 10-3-2-3-6 0-10Z" class="mark-petal" />
+        <path d="M6 20c5-1 8 0 10 4-4 2-8 1-10-4Z" class="mark-leaf" />
+        <path d="M26 20c-5-1-8 0-10 4 4 2 8 1 10-4Z" class="mark-leaf alt" />
+      </svg>
+      <span>PatronLab</span>
+      <span class="badge">2.0</span>
+    </a>
+
+    <div class="art" aria-hidden="true">
+      <svg class="felt" viewBox="0 0 320 220">
+        <rect class="sheet" x="8" y="8" width="304" height="204" rx="6" />
+        <path
+          class="piece p1"
+          d="M58 30c18-10 40 4 34 24-4 14-20 24-34 34-14-10-30-20-34-34-6-20 16-34 34-24Z"
+        />
+        <path class="piece p2" d="M150 26c26 14 30 52 0 74-30-22-26-60 0-74Z" />
+        <path
+          class="piece p3"
+          d="M240 34c10-8 26-4 30 10 12 0 20 14 12 24 8 10 0 24-12 24-4 14-20 18-30 10-10 8-26 4-30-10-12 0-20-14-12-24-8-10 0-24 12-24 4-14 20-18 30-10Z"
+        />
+        <circle class="piece p4" cx="240" cy="68" r="12" />
+        <path
+          class="piece p5"
+          d="M74 128c8 0 12 10 14 20 10 2 20 6 20 14s-10 12-20 14c-2 10-6 20-14 20s-12-10-14-20c-10-2-20-6-20-14s10-12 20-14c2-10 6-20 14-20Z"
+        />
+        <ellipse class="piece p6" cx="200" cy="168" rx="58" ry="26" />
+        <path
+          class="route"
+          d="M20 20C40 30 50 40 58 56S110 90 150 62 210 40 240 68 250 130 200 168 110 150 74 162"
+        />
+        <g class="order">
+          <circle cx="58" cy="56" r="8" />
+          <text x="58" y="59.5">1</text>
+          <circle cx="150" cy="62" r="8" />
+          <text x="150" y="65.5">2</text>
+          <circle cx="240" cy="68" r="8" />
+          <text x="240" y="71.5">3</text>
+          <circle cx="200" cy="168" r="8" />
+          <text x="200" y="171.5">4</text>
+          <circle cx="74" cy="162" r="8" />
+          <text x="74" y="165.5">5</text>
+        </g>
+      </svg>
+      <div class="plate">
+        <canvas #plate width="360" height="360"></canvas>
+      </div>
+    </div>
+
+    <div class="copy">
+      <p class="claim">Diseña la pieza.<br />Prueba sus colores.<br />Corta sin desperdiciar.</p>
+      <ul class="features">
+        <li>
+          <span class="dot gold"></span>
+          <span
+            ><strong>Barniz de Pasto</strong> por láminas de color, sobre platos, cajas y
+            bandejas.</span
+          >
+        </li>
+        <li>
+          <span class="dot red"></span>
+          <span
+            ><strong>Bisturí y simetría radial</strong> para coronas y mandalas en segundos.</span
+          >
+        </li>
+        <li>
+          <span class="dot green"></span>
+          <span><strong>Plan de corte</strong> que acomoda las piezas y ahorra material.</span>
+        </li>
+      </ul>
+    </div>
   </section>
 
   <section class="panel">
-    <form (ngSubmit)="submit()" #form="ngForm">
-      <h1>{{ isRegister() ? 'Crea tu taller' : 'Entra a tu taller' }}</h1>
-      <p class="lead">
-        @if (isRegister()) {
-          Tus patrones quedan guardados con todas sus versiones.
-        } @else {
-          Sigue con tus patrones donde los dejaste.
-        }
-      </p>
+    <div class="card">
+      <nav class="switcher" aria-label="Tipo de acceso">
+        <a
+          routerLink="/entrar"
+          queryParamsHandling="preserve"
+          [class.active]="!isRegister()"
+          [attr.aria-current]="isRegister() ? null : 'page'"
+          >Entrar</a
+        >
+        <a
+          routerLink="/registro"
+          queryParamsHandling="preserve"
+          [class.active]="isRegister()"
+          [attr.aria-current]="isRegister() ? 'page' : null"
+          >Crear cuenta</a
+        >
+      </nav>
 
-      @if (isRegister()) {
-        <label class="field">
-          <span>Nombre</span>
+      <form (ngSubmit)="submit(form)" #form="ngForm" novalidate>
+        <header class="head">
+          <h1>{{ isRegister() ? 'Crea tu taller' : 'Entra a tu taller' }}</h1>
+          <p class="lead">
+            @if (isRegister()) {
+              Gratis. Tus diseños quedan guardados con todas sus versiones.
+            } @else {
+              Sigue con tus patrones donde los dejaste.
+            }
+          </p>
+        </header>
+
+        @if (isRegister()) {
+          <div class="field">
+            <label for="auth-name">Nombre</label>
+            <input
+              id="auth-name"
+              name="fullName"
+              #nameModel="ngModel"
+              [(ngModel)]="fullName"
+              required
+              minlength="2"
+              maxlength="100"
+              autocomplete="name"
+              placeholder="Como te conocen en el taller"
+              [attr.aria-invalid]="showError(nameModel) || null"
+              aria-describedby="auth-name-error"
+            />
+            @if (showError(nameModel)) {
+              <p class="field-error" id="auth-name-error">Escribe tu nombre (mínimo 2 letras).</p>
+            }
+          </div>
+          <div class="field">
+            <label for="auth-craft">Oficio <span class="optional">opcional</span></label>
+            <input
+              id="auth-craft"
+              name="craft"
+              [(ngModel)]="craft"
+              maxlength="50"
+              list="auth-crafts"
+              placeholder="Barniz de Pasto, bordado, corte láser…"
+            />
+            <datalist id="auth-crafts">
+              @for (option of crafts; track option) {
+                <option [value]="option"></option>
+              }
+            </datalist>
+          </div>
+        }
+
+        <div class="field">
+          <label for="auth-email">Correo</label>
           <input
-            name="fullName"
-            [(ngModel)]="fullName"
+            id="auth-email"
+            name="email"
+            type="email"
+            #emailModel="ngModel"
+            [(ngModel)]="email"
             required
-            minlength="2"
-            maxlength="100"
-            autocomplete="name"
+            email
+            autocomplete="email"
+            inputmode="email"
+            placeholder="tu@correo.com"
+            [attr.aria-invalid]="showError(emailModel) || null"
+            aria-describedby="auth-email-error"
           />
-        </label>
-        <label class="field">
-          <span>Oficio (opcional)</span>
-          <input
-            name="craft"
-            [(ngModel)]="craft"
-            maxlength="50"
-            placeholder="Bordado, marroquinería, corte láser…"
-          />
-        </label>
-      }
-      <label class="field">
-        <span>Correo</span>
-        <input name="email" type="email" [(ngModel)]="email" required autocomplete="email" />
-      </label>
-      <label class="field">
-        <span>Contraseña</span>
-        <input
-          name="password"
-          type="password"
-          [(ngModel)]="password"
-          required
-          [attr.minlength]="isRegister() ? 8 : null"
-          [autocomplete]="isRegister() ? 'new-password' : 'current-password'"
-        />
-      </label>
+          @if (showError(emailModel)) {
+            <p class="field-error" id="auth-email-error">
+              {{ email ? 'Revisa el correo: parece incompleto.' : 'Escribe tu correo.' }}
+            </p>
+          }
+        </div>
 
-      @if (error(); as message) {
-        <p class="error-text" role="alert">{{ message }}</p>
-      }
+        <div class="field">
+          <label for="auth-password">Contraseña</label>
+          <div class="password">
+            <input
+              id="auth-password"
+              name="password"
+              #passwordModel="ngModel"
+              [type]="showPassword() ? 'text' : 'password'"
+              [(ngModel)]="password"
+              required
+              [minlength]="isRegister() ? 8 : null"
+              [autocomplete]="isRegister() ? 'new-password' : 'current-password'"
+              [attr.aria-invalid]="showError(passwordModel) || null"
+              aria-describedby="auth-password-help"
+            />
+            <button
+              class="reveal"
+              type="button"
+              [attr.aria-pressed]="showPassword()"
+              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              (click)="showPassword.set(!showPassword())"
+            >
+              @if (showPassword()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                  <path
+                    d="M9.9 5.1A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.4-2.6 3.7M6.1 6.1C4 7.5 2.6 9.6 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.5"
+                  />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12c1-2.5 5-7 10-7s9 4.5 10 7c-1 2.5-5 7-10 7S3 14.5 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+          <div id="auth-password-help">
+            @if (showError(passwordModel)) {
+              <p class="field-error">
+                {{
+                  password
+                    ? 'Usa al menos 8 caracteres.'
+                    : isRegister()
+                      ? 'Elige una contraseña.'
+                      : 'Escribe tu contraseña.'
+                }}
+              </p>
+            } @else if (isRegister()) {
+              <div class="strength" [attr.data-level]="strength().level">
+                <span class="bars"><i></i><i></i><i></i><i></i></span>
+                <span class="strength-label">{{ strength().label }}</span>
+              </div>
+            }
+          </div>
+        </div>
 
-      <button class="btn primary submit" type="submit" [disabled]="busy() || form.invalid">
-        {{ busy() ? 'Un momento…' : isRegister() ? 'Crear cuenta' : 'Entrar' }}
-      </button>
-
-      <p class="switch">
-        @if (isRegister()) {
-          ¿Ya tienes cuenta? <a routerLink="/entrar">Entra</a>
-        } @else {
-          ¿Primera vez? <a routerLink="/registro">Crea una cuenta</a>
+        @if (error(); as message) {
+          <p class="error-box" role="alert">{{ message }}</p>
         }
-      </p>
-    </form>
+
+        <button class="btn primary submit" type="submit" [disabled]="busy()">
+          @if (busy()) {
+            <span class="spinner" aria-hidden="true"></span>
+            Un momento…
+          } @else {
+            {{ isRegister() ? 'Crear mi taller' : 'Entrar' }}
+          }
+        </button>
+
+        <p class="switch">
+          @if (isRegister()) {
+            ¿Ya tienes cuenta?
+            <a routerLink="/entrar" queryParamsHandling="preserve">Entra</a>
+          } @else {
+            ¿Primera vez?
+            <a routerLink="/registro" queryParamsHandling="preserve">Crea tu taller gratis</a>
+          }
+        </p>
+      </form>
+    </div>
+
+    <a class="craft-link" routerLink="/oficio">
+      Conoce el oficio del Barniz de Pasto
+      <span aria-hidden="true">→</span>
+    </a>
   </section>
 </main>
