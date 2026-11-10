@@ -1,8 +1,115 @@
+<!-- 1. De boceto a láminas (P0) -->
 <section class="block">
-  <h3>Colores desde una foto</h3>
+  <h3>De boceto a láminas de mopa-mopa</h3>
   <p class="muted">
-    Sube una foto de tus telas o hilos. Un algoritmo de agrupamiento (k-means) encuentra sus colores
-    principales y cuánto ocupa cada uno.
+    Sube un dibujo o foto (se ajusta en el navegador a máximo 1600 px) y sepáralo en láminas de
+    colores listas para recortar con bisturí.
+  </p>
+  <div class="row">
+    <label class="btn small primary upload">
+      <input
+        class="visually-hidden"
+        type="file"
+        accept="image/*"
+        (change)="onSketchFile($event)"
+        [disabled]="vectorizeBusy()"
+      />
+      {{ vectorizeBusy() ? 'Vectorizando…' : sketchImage() ? 'Cambiar boceto' : 'Subir boceto' }}
+    </label>
+    <button class="btn small" type="button" (click)="loadDemoSketch()" [disabled]="vectorizeBusy()">
+      Probar boceto de colibrí
+    </button>
+    @if (vectorizeBusy()) {
+      <button class="btn small quiet danger" type="button" (click)="cancelOperations()">
+        Cancelar
+      </button>
+    }
+  </div>
+
+  <div class="sliders-grid">
+    <label class="slider-field">
+      <span>Láminas ({{ vecColors }})</span>
+      <input
+        type="range"
+        min="2"
+        max="8"
+        step="1"
+        [(ngModel)]="vecColors"
+        name="vecColors"
+        (change)="runVectorize()"
+      />
+    </label>
+    <label class="slider-field">
+      <span>Detalle ({{ asPercent(vecDetail) }} %)</span>
+      <input
+        type="range"
+        min="0.1"
+        max="1"
+        step="0.1"
+        [(ngModel)]="vecDetail"
+        name="vecDetail"
+        (change)="runVectorize()"
+      />
+    </label>
+    <label class="slider-field">
+      <span>Área mín. ({{ vecMinArea }} mm²)</span>
+      <input
+        type="range"
+        min="5"
+        max="100"
+        step="5"
+        [(ngModel)]="vecMinArea"
+        name="vecMinArea"
+        (change)="runVectorize()"
+      />
+    </label>
+  </div>
+
+  @if (vectorizeError(); as message) {
+    <p class="error-text" role="alert">{{ message }}</p>
+  }
+
+  @if (vectorizeResult(); as vec) {
+    <div class="vec-preview">
+      @if (vectorizePreviewDoc(); as previewDoc) {
+        <app-thumbnail
+          class="thumb"
+          [document]="previewDoc"
+          [size]="180"
+          label="Vista previa de láminas vectorizadas"
+        />
+      }
+      <div class="vec-details">
+        <p class="small">
+          <strong>{{ vec.layers.length }} láminas</strong> · {{ vec.shapes.length }} cortes ·
+          <small class="muted">{{ vec.elapsedMs }} ms</small>
+        </p>
+        <ul class="vec-layers">
+          @for (layer of vec.layers; track layer.id) {
+            <li>
+              <span class="chip" [style.background]="layer.color"></span>
+              <span>{{ layer.name }}</span>
+              <small>{{ asPercent(layer.areaShare) }} %</small>
+            </li>
+          }
+        </ul>
+        @for (note of vec.notes; track note) {
+          <p class="muted small">• {{ note }}</p>
+        }
+        <button class="btn small barniz" type="button" (click)="applyVectorizedLayers()">
+          Aplicar láminas con animación
+        </button>
+      </div>
+    </div>
+  }
+</section>
+
+<!-- 2. Colores desde una foto + Análisis de color -->
+<section class="block">
+  <h3>Paleta y análisis de color (ΔE)</h3>
+  <p class="muted">
+    Extrae colores de una foto (k-means) o usa las anilinas del Barniz de Pasto, y verifica que dos
+    láminas vecinas no sean difíciles de distinguir.
   </p>
   <div class="row">
     <label class="btn small upload">
@@ -15,14 +122,12 @@
       />
       {{ paletteBusy() ? 'Analizando…' : photo() ? 'Otra foto' : 'Subir foto' }}
     </label>
-    <label class="inline">
-      Colores
-      <select [(ngModel)]="colors" name="colors">
-        @for (n of [3, 4, 5, 6, 7, 8]; track n) {
-          <option [ngValue]="n">{{ n }}</option>
-        }
-      </select>
-    </label>
+    <button class="btn small" type="button" (click)="useAnilinePalette()">
+      Usar anilinas de Pasto
+    </button>
+    <button class="btn small" type="button" (click)="runColorAnalysis()" [disabled]="colorBusy()">
+      {{ colorBusy() ? 'Analizando…' : 'Analizar contraste ΔE' }}
+    </button>
   </div>
   @if (paletteError(); as message) {
     <p class="error-text" role="alert">{{ message }}</p>
@@ -48,50 +153,160 @@
         }
       </ul>
     </div>
-    <p class="muted small">Toca un color para pintar la pieza elegida.</p>
+  }
+
+  @if (colorAnalysis(); as analysis) {
+    <div class="color-analysis">
+      @for (pair of analysis.pairs; track pair.a + pair.b) {
+        @if (pair.tooSimilar) {
+          <p class="warn small" role="status">
+            ⚠ Las láminas {{ pair.a }} y {{ pair.b }} casi no se distinguen (ΔE =
+            {{ pair.deltaE }}).
+          </p>
+        }
+      }
+      <div class="color-names">
+        @for (entry of analysis.names; track entry.hex) {
+          <span class="color-badge"> <i [style.background]="entry.hex"></i> {{ entry.name }} </span>
+        }
+      </div>
+      @if (analysis.harmonies.length) {
+        <p class="small"><strong>Armonías sugeridas (clic para aplicar):</strong></p>
+        <div class="harmonies">
+          @for (harmony of analysis.harmonies; track $index) {
+            <button
+              type="button"
+              class="harmony-btn"
+              (click)="applyHarmony(harmony)"
+              [attr.aria-label]="'Aplicar armonía ' + ($index + 1)"
+            >
+              @for (hex of harmony; track hex) {
+                <span [style.background]="hex"></span>
+              }
+              <small>Aplicar</small>
+            </button>
+          }
+        </div>
+      }
+    </div>
   }
 </section>
 
+<!-- 3. Evolución interactiva + Frente de Pareto -->
 <section class="block">
-  <h3>Variaciones del diseño</h3>
+  <h3>Evolución interactiva</h3>
   <p class="muted">
-    Una búsqueda evolutiva prueba cientos de combinaciones con esa paleta, moviendo y girando un
-    poco las piezas, y se queda con las que mejor puntúan en equilibrio, contraste y piezas sin
-    encimar.
+    Ajusta el peso de cada criterio, marca con ⭐ tus variaciones favoritas y crúzalas en la
+    siguiente generación.
   </p>
-  <button
-    class="btn small primary"
-    type="button"
-    (click)="generate()"
-    [disabled]="variationsBusy() || !store.palette().length || !store.document().shapes.length"
-  >
-    {{ variationsBusy() ? 'Buscando…' : variations() ? 'Buscar otras' : 'Generar 4 variaciones' }}
-  </button>
-  @if (!store.palette().length) {
-    <p class="muted small">Primero saca los colores de una foto.</p>
-  }
+
+  <div class="sliders-grid">
+    <label class="slider-field">
+      <span>Equilibrio ({{ asPercent(weightBalance) }} %)</span>
+      <input type="range" min="0" max="1" step="0.1" [(ngModel)]="weightBalance" name="wBal" />
+    </label>
+    <label class="slider-field">
+      <span>Sin encimar ({{ asPercent(weightOverlap) }} %)</span>
+      <input type="range" min="0" max="1" step="0.1" [(ngModel)]="weightOverlap" name="wOvl" />
+    </label>
+    <label class="slider-field">
+      <span>Contraste ({{ asPercent(weightContrast) }} %)</span>
+      <input type="range" min="0" max="1" step="0.1" [(ngModel)]="weightContrast" name="wCon" />
+    </label>
+    <label class="slider-field">
+      <span>Cobertura ({{ asPercent(weightCoverage) }} %)</span>
+      <input type="range" min="0" max="1" step="0.1" [(ngModel)]="weightCoverage" name="wCov" />
+    </label>
+  </div>
+
+  <div class="row">
+    <button
+      class="btn small primary"
+      type="button"
+      (click)="evolveNextGeneration()"
+      [disabled]="variationsBusy() || !store.document().shapes.length"
+    >
+      {{
+        variationsBusy()
+          ? 'Evolucionando…'
+          : evolved()
+            ? 'Siguiente generación (' + favoriteIndices().length + ' ⭐)'
+            : 'Generar primera generación'
+      }}
+    </button>
+    <button
+      class="btn small"
+      type="button"
+      (click)="computePareto()"
+      [disabled]="paretoBusy() || !store.document().shapes.length"
+    >
+      {{ paretoBusy() ? 'Calculando…' : 'Frente de Pareto' }}
+    </button>
+    @if (variationsBusy()) {
+      <button class="btn small quiet danger" type="button" (click)="cancelOperations()">
+        Cancelar
+      </button>
+    }
+  </div>
+
   @if (variationsError(); as message) {
     <p class="error-text" role="alert">{{ message }}</p>
   }
-  @if (variations(); as result) {
+
+  @if (evolved(); as result) {
     <p class="small">
       Tu diseño actual puntúa <strong>{{ asPercent(result.original.total) }}</strong> de 100.
     </p>
+
+    @if (allHistory().length > 1) {
+      <div class="history-chart">
+        <span class="small muted">Progreso por generación (mejor vs promedio)</span>
+        <svg viewBox="0 0 240 80" role="img" aria-label="Gráfica de evolución por generación">
+          <polyline
+            fill="none"
+            stroke="#c99b2e"
+            stroke-width="2"
+            [attr.points]="historyPolyline('best')"
+          />
+          <polyline
+            fill="none"
+            stroke="#5b554f"
+            stroke-width="1.5"
+            stroke-dasharray="3 2"
+            [attr.points]="historyPolyline('average')"
+          />
+        </svg>
+      </div>
+    }
+
     <ul class="variations">
       @for (variation of result.variations; track $index) {
-        <li>
+        <li [class.fav]="favoriteIndices().includes($index)">
+          <div class="var-head">
+            <div class="score">
+              <strong>{{ asPercent(variation.score.total) }}</strong>
+              <span class="delta">
+                {{ variation.score.total >= result.original.total ? '+' : ''
+                }}{{ asPercent(variation.score.total - result.original.total) }}
+              </span>
+            </div>
+            <button
+              type="button"
+              class="star-btn"
+              [class.active]="favoriteIndices().includes($index)"
+              [attr.aria-pressed]="favoriteIndices().includes($index)"
+              [title]="'Marcar variación ' + ($index + 1) + ' como favorita'"
+              (click)="toggleFavorite($index)"
+            >
+              ⭐
+            </button>
+          </div>
           <app-thumbnail
             class="thumb"
             [document]="variation.document"
-            [size]="160"
+            [size]="150"
             [label]="'Variación ' + ($index + 1)"
           />
-          <div class="score">
-            <strong>{{ asPercent(variation.score.total) }}</strong>
-            <span class="delta"
-              >+{{ asPercent(variation.score.total - result.original.total) }}</span
-            >
-          </div>
           <dl>
             @for (criterion of criteria; track criterion.key) {
               <div>
@@ -106,23 +321,91 @@
         </li>
       }
     </ul>
-    <p class="muted small">
-      Puedes deshacer con Ctrl + Z. El puntaje mide reglas de diseño, no el gusto: decides tú.
-    </p>
+  }
+
+  @if (pareto(); as paretoRes) {
+    <div class="pareto-box">
+      <h4>Frente de Pareto (Equilibrio vs Ahorro de material)</h4>
+      <p class="muted small">
+        Pasa el cursor sobre un punto para ver su miniatura y haz clic para aplicarlo ({{
+          paretoRes.elapsedMs
+        }}
+        ms).
+      </p>
+      <div class="pareto-split">
+        <svg
+          class="pareto-svg"
+          viewBox="0 0 180 140"
+          role="img"
+          aria-label="Gráfica de dispersión del frente de Pareto"
+        >
+          <line x1="22" y1="118" x2="168" y2="118" stroke="currentColor" stroke-opacity="0.3" />
+          <line x1="22" y1="14" x2="22" y2="118" stroke="currentColor" stroke-opacity="0.3" />
+          <text x="95" y="134" font-size="8" text-anchor="middle" fill="currentColor">
+            Equilibrio →
+          </text>
+          <text
+            x="10"
+            y="66"
+            font-size="8"
+            text-anchor="middle"
+            fill="currentColor"
+            transform="rotate(-90 10 66)"
+          >
+            Ahorro →
+          </text>
+          @for (pt of paretoRes.points; track $index) {
+            <circle
+              [attr.cx]="26 + pt.balance * 134"
+              [attr.cy]="114 - pt.materialSaving * 94"
+              r="6"
+              [attr.fill]="pt.contrast > 0.8 ? '#c99b2e' : '#286b35'"
+              stroke="#1d1a17"
+              stroke-width="1.2"
+              class="pareto-dot"
+              tabindex="0"
+              (mouseenter)="hoveredPareto.set(pt)"
+              (focus)="hoveredPareto.set(pt)"
+              (click)="useVariation(pt.document)"
+            />
+          }
+        </svg>
+        @if (hoveredPareto(); as hov) {
+          <div class="pareto-preview">
+            <app-thumbnail
+              class="thumb"
+              [document]="hov.document"
+              [size]="110"
+              label="Punto del frente de Pareto"
+            />
+            <small>
+              Equilibrio {{ asPercent(hov.balance) }} % · Ahorro
+              {{ asPercent(hov.materialSaving) }} %
+            </small>
+            <button class="btn small" type="button" (click)="useVariation(hov.document)">
+              Aplicar
+            </button>
+          </div>
+        }
+      </div>
+    </div>
   }
 </section>
 
+<!-- 4. Plan de material por lámina y Plan de corte -->
 <section class="block">
-  <h3>Plan de corte</h3>
+  <h3>Plan de material por lámina y corte</h3>
   <p class="muted">
-    Acomoda las piezas en el rollo para gastar menos material y ordena los cortes para que la
-    cuchilla o el láser recorra menos camino.
+    Calcula el área en cm², las láminas de mopa-mopa necesarias por color y descarga el SVG de corte
+    por lámina o en rollo completo.
   </p>
+
   <div class="row">
     <label class="inline">
-      Ancho del rollo
-      <input type="number" min="10" max="5000" [(ngModel)]="rollWidth" name="roll" />
-      mm
+      Lámina (mm)
+      <input type="number" min="50" max="2000" [(ngModel)]="sheetWidth" name="sheetW" />
+      ×
+      <input type="number" min="50" max="2000" [(ngModel)]="sheetHeight" name="sheetH" />
     </label>
     <label class="inline">
       Margen
@@ -130,14 +413,53 @@
       mm
     </label>
   </div>
-  <button
-    class="btn small primary"
-    type="button"
-    (click)="optimize()"
-    [disabled]="layoutBusy() || !store.document().shapes.length"
-  >
-    {{ layoutBusy() ? 'Calculando…' : 'Calcular plan de corte' }}
-  </button>
+
+  <div class="row">
+    <button
+      class="btn small primary"
+      type="button"
+      (click)="optimize()"
+      [disabled]="layoutBusy() || !store.document().shapes.length"
+    >
+      {{ layoutBusy() ? 'Calculando…' : 'Calcular aprovechamiento' }}
+    </button>
+    @if ((store.document().layers ?? []).length > 0) {
+      <button class="btn small" type="button" (click)="exportAllLayersSvg()">
+        Exportar un SVG por lámina
+      </button>
+    }
+  </div>
+
+  <table class="layer-table" aria-label="Tabla de material por lámina">
+    <thead>
+      <tr>
+        <th>Lámina</th>
+        <th>Área</th>
+        <th>Láminas</th>
+        <th>Desp.</th>
+        <th>SVG</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of layerLayouts(); track row.layerId) {
+        <tr>
+          <td>
+            <span class="dot-inline" [style.background]="row.color"></span>
+            {{ layerNameOf(row.layerId) }}
+          </td>
+          <td>{{ row.areaCm2 }} cm²</td>
+          <td>{{ row.sheets }}</td>
+          <td>{{ percent(row.wastePercent) }}</td>
+          <td>
+            <button class="btn quiet small" type="button" (click)="exportLayerSvgById(row.layerId)">
+              SVG
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
   @if (layoutError(); as message) {
     <p class="error-text" role="alert">{{ message }}</p>
   }
@@ -152,10 +474,10 @@
         <dt>Material usado</dt>
         <dd>
           {{ mm(plan.usedLength) }} de rollo
-          <small
-            >antes {{ mm(plan.baselineLength) }},
-            {{ saving(plan.baselineLength, plan.usedLength) }} % menos</small
-          >
+          <small>
+            antes {{ mm(plan.baselineLength) }},
+            {{ saving(plan.baselineLength, plan.usedLength) }} % menos
+          </small>
         </dd>
       </div>
       <div>
@@ -169,10 +491,10 @@
         <dt>Recorrido de corte</dt>
         <dd>
           {{ mm(plan.cutTravel) }}
-          <small
-            >antes {{ mm(plan.baselineCutTravel) }},
-            {{ saving(plan.baselineCutTravel, plan.cutTravel) }} % menos</small
-          >
+          <small>
+            antes {{ mm(plan.baselineCutTravel) }},
+            {{ saving(plan.baselineCutTravel, plan.cutTravel) }} % menos
+          </small>
         </dd>
       </div>
     </dl>
@@ -185,9 +507,5 @@
     <button class="btn small" type="button" (click)="downloadPlan()">
       Descargar plan a escala real (SVG)
     </button>
-    <p class="muted small">
-      "Antes" es colocar las piezas en el orden en que las dibujaste, sin girarlas, y cortarlas en
-      ese orden. Los números marcan el orden de corte desde la esquina del rollo.
-    </p>
   }
 </section>
