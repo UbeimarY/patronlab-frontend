@@ -5,9 +5,16 @@ import {
   PatternMode,
   Shape,
   migrateDocument,
-  round,
-  syncRadialGroups,
 } from './document';
+import { C, buildBarnizDoc, curved, dot, shape } from './barniz-drawing';
+import {
+  HUMMINGBIRD_EYE,
+  fretParts,
+  frailejonParts,
+  hummingbirdParts,
+  polarSun,
+  rosette as rosetteMotif,
+} from './motif-library';
 import {
   Pt,
   flower,
@@ -26,108 +33,6 @@ export interface Template {
   label: string;
   description: string;
   build: (customObject?: Partial<BarnizObject>) => PatternDocument;
-}
-
-const STROKE = '#2b2420';
-
-function shape(partial: Omit<Shape, 'stroke'>): Shape {
-  return { ...partial, stroke: STROKE };
-}
-
-/**
- * A `path` shape from document-space points (a sampled curve), centered on its
- * bounding box like the Bisturí does, rounded to 0.1 mm without repeated points.
- */
-function curved(
-  id: string,
-  docPoints: readonly Pt[],
-  fill: string,
-  layerId: string,
-  groupId: string | null = null,
-): Shape {
-  const xs = docPoints.map(([x]) => x);
-  const ys = docPoints.map(([, y]) => y);
-  const cx = round((Math.min(...xs) + Math.max(...xs)) / 2);
-  const cy = round((Math.min(...ys) + Math.max(...ys)) / 2);
-  const points: [number, number][] = [];
-  for (const [x, y] of docPoints) {
-    const p: [number, number] = [round(x - cx), round(y - cy)];
-    const prev = points[points.length - 1];
-    if (!prev || prev[0] !== p[0] || prev[1] !== p[1]) points.push(p);
-  }
-  const first = points[0];
-  const last = points[points.length - 1];
-  if (points.length > 3 && first[0] === last[0] && first[1] === last[1]) points.pop();
-  return shape({
-    id,
-    kind: 'path',
-    x: cx,
-    y: cy,
-    width: 0,
-    height: 0,
-    rotation: 0,
-    fill,
-    layerId,
-    groupId,
-    points,
-  });
-}
-
-function dot(
-  id: string,
-  x: number,
-  y: number,
-  d: number,
-  fill: string,
-  layerId: string,
-  groupId: string | null = null,
-): Shape {
-  return shape({
-    id,
-    kind: 'ellipse',
-    x: round(x),
-    y: round(y),
-    width: round(d),
-    height: round(d),
-    rotation: 0,
-    fill,
-    layerId,
-    groupId,
-  });
-}
-
-const C = {
-  gold: '#e0a526',
-  red: '#c0262f',
-  green: '#2f8a3f',
-  blue: '#2a6fb8',
-  turquoise: '#1f9a90',
-  orange: '#e0642a',
-  olive: '#7d8f3a',
-  magenta: '#a83a7c',
-};
-
-function buildBarnizDoc(
-  object: BarnizObject,
-  layers: BarnizLayer[],
-  shapes: Shape[],
-  groups: PatternDocument['groups'] = [],
-): PatternDocument {
-  const width = object.width;
-  const height = object.kind === 'plate' || object.kind === 'bowl' ? object.width : object.height;
-  return syncRadialGroups(
-    migrateDocument({
-      schemaVersion: 2,
-      mode: 'barniz',
-      width,
-      height,
-      background: object.baseColor,
-      object: { ...object, height },
-      layers,
-      groups,
-      shapes,
-    }),
-  );
 }
 
 export const TEMPLATES: Template[] = [
@@ -277,80 +182,7 @@ export const TEMPLATES: Template[] = [
       // Hummingbird drawn facing right in its own frame, then placed on the plate.
       const bird = { dx: -16, dy: 22, rot: -8, k: 0.9 };
       const B = (pts: readonly Pt[]) => T(pts, bird.dx, bird.dy, bird.rot, bird.k);
-      const body = smoothClosed(
-        [
-          [20, -58],
-          [34, -62],
-          [46, -54],
-          [48, -42],
-          [42, -28],
-          [34, -8],
-          [20, 10],
-          [2, 22],
-          [-16, 30],
-          [-24, 26],
-          [-18, 12],
-          [-6, -6],
-          [4, -24],
-          [10, -40],
-          [13, -52],
-        ],
-        8,
-      );
-      const throat = smoothClosed(
-        [
-          [47, -40],
-          [44, -27],
-          [37, -13],
-          [31, -17],
-          [34, -29],
-          [40, -38],
-        ],
-        8,
-      );
-      const wing = smoothClosed(
-        [
-          [16, -22],
-          [10, -44],
-          [-4, -68],
-          [-28, -92],
-          [-46, -100],
-          [-42, -88],
-          [-54, -84],
-          [-36, -70],
-          [-48, -64],
-          [-28, -52],
-          [-38, -44],
-          [-18, -34],
-          [-20, -22],
-          [0, -10],
-        ],
-        8,
-      );
-      const tail = smoothClosed(
-        [
-          [-4, 8],
-          [-16, 22],
-          [-36, 32],
-          [-62, 38],
-          [-44, 46],
-          [-58, 68],
-          [-30, 50],
-          [-14, 36],
-          [-2, 20],
-        ],
-        8,
-      );
-      const beak = ribbon(
-        [
-          [44, -48],
-          [70, -46],
-          [98, -38],
-        ],
-        4.6,
-        1.2,
-        10,
-      );
+      const { body, throat, wing, tail, beak } = hummingbirdParts();
 
       // Trumpet flower (local frame: tube up, mouth down), turned toward the beak.
       const trumpet = smoothClosed(
@@ -415,7 +247,13 @@ export const TEMPLATES: Template[] = [
         curved('bird-wing', B(wing), C.blue, 'l-blue'),
         curved('bird-throat', B(throat), C.red, 'l-red'),
         curved('bird-beak', B(beak), C.gold, 'l-gold'),
-        dot('bird-eye', ...(B([[36, -48]])[0] as [number, number]), 5.5 * s, C.gold, 'l-gold'),
+        dot(
+          'bird-eye',
+          ...(B([HUMMINGBIRD_EYE])[0] as [number, number]),
+          5.5 * s,
+          C.gold,
+          'l-gold',
+        ),
 
         // Flower the bird is feeding on
         curved('flower-sepal', T(sepal, fl.dx, fl.dy, fl.rot, fl.k), C.green, 'l-green'),
@@ -473,31 +311,9 @@ export const TEMPLATES: Template[] = [
         return [r * Math.sin(t), -r * Math.cos(t)] as const;
       });
 
-      // One stepped pyramid with softened corners, pointing up, base at y = 0.
-      const steps: Pt[] = [
-        [-18, 0],
-        [-18, -6],
-        [-12, -6],
-        [-12, -12],
-        [-6, -12],
-        [-6, -18],
-        [6, -18],
-        [6, -12],
-        [12, -12],
-        [12, -6],
-        [18, -6],
-        [18, 0],
-      ];
-      const pyramid = roundCorners(steps, 1);
-      // A coiled spiral hook (Archimedean) ending in a short tail.
-      const spiralSpine: Pt[] = Array.from({ length: 22 }, (_, i) => {
-        const t = i / 21;
-        const theta = Math.PI * 2.1 * (1 - t);
-        const r = 2 + 8 * (1 - t);
-        return [r * Math.cos(theta), r * Math.sin(theta)] as const;
-      });
-      const spiral = ribbon(spiralSpine, 4.2, 2.8, 4);
-      const rosette = flower(9, 4, 0.55, 96);
+      // Stepped pyramid frets with softened corners and coiled spiral hooks.
+      const { pyramid, spiral } = fretParts();
+      const rosette = rosetteMotif();
 
       const T = (pts: readonly Pt[], x: number, y: number, rot = 0) => place(pts, x, y, rot, s);
       const margin = 12 * s;
@@ -660,36 +476,7 @@ export const TEMPLATES: Template[] = [
       // Sun with wavy flame rays
       const sun = polarSun(30);
 
-      // Frailejón: a stout shaggy trunk, a fan rosette of furry leaves and two flower stalks.
-      const trunk = smoothClosed(
-        Array.from({ length: 14 }, (_, i) => {
-          const side = i < 7 ? 1 : -1;
-          const j = i < 7 ? i : 13 - i;
-          const y = -j * 4.6;
-          const shag = j % 2 === 0 ? 1.6 : 0;
-          return [side * (7.5 - j * 0.3 + shag), y] as const;
-        }),
-        5,
-      );
-      const rosette = Array.from({ length: 180 }, (_, i) => {
-        const t = (2 * Math.PI * i) / 180;
-        const up = Math.cos(t) > -0.15 ? 1 : 0.5;
-        const r = 26 * up * (0.42 + 0.58 * Math.pow(Math.abs(Math.cos(5.5 * t)), 1.2));
-        return [r * Math.sin(t), -34 - r * Math.cos(t) * 0.85] as const;
-      });
-
-      const stalk = (dir: number): Pt[] =>
-        ribbon(
-          [
-            [dir * 3, -48],
-            [dir * 10, -62],
-            [dir * 13, -72],
-          ],
-          2.4,
-          1.6,
-          6,
-        );
-
+      const { trunk, rosette, stalk } = frailejonParts();
       const shapes: Shape[] = [
         curved('volcano', S(volcano), C.blue, 'l-mountain'),
         curved(
@@ -802,13 +589,3 @@ export const TEMPLATES: Template[] = [
     },
   },
 ];
-
-/** A sun disc with twelve wavy flame rays. */
-function polarSun(r: number): Pt[] {
-  return Array.from({ length: 192 }, (_, i) => {
-    const t = (2 * Math.PI * i) / 192;
-    const wave = Math.sin(12 * t + 0.6 * Math.sin(24 * t));
-    const radius = r * (0.74 + 0.26 * Math.max(0, wave));
-    return [radius * Math.sin(t), -radius * Math.cos(t)] as const;
-  });
-}
