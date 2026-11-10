@@ -1,7 +1,11 @@
 @if (loaded()) {
-  <div class="editor">
+  <div
+    class="editor"
+    [attr.data-mode]="store.document().mode ?? 'pattern'"
+    [class.mobile-sheet-open]="mobileSheetOpen()"
+  >
     <header class="top">
-      <a class="back" routerLink="/patrones">Mis patrones</a>
+      <a class="back" routerLink="/patrones">Mis diseños</a>
       <label class="name">
         <span class="visually-hidden">Nombre del patrón</span>
         <input
@@ -11,6 +15,11 @@
           (blur)="rename($any($event.target).value)"
         />
       </label>
+      @if (store.document().mode === 'barniz') {
+        <a class="craft-pill" routerLink="/oficio" title="Datos del Barniz de Pasto mopa-mopa">
+          Sobre el oficio
+        </a>
+      }
       <p
         class="status"
         [class.dirty]="store.saveState() === 'dirty'"
@@ -20,6 +29,23 @@
         {{ status() }}
       </p>
       <div class="spacer"></div>
+      <button
+        class="btn quiet small"
+        type="button"
+        (click)="openCommands()"
+        title="Paleta de comandos (Ctrl + K)"
+      >
+        Comandos <kbd>Ctrl+K</kbd>
+      </button>
+      <button
+        class="btn quiet small"
+        type="button"
+        (click)="openHelp()"
+        title="Atajos de teclado (?)"
+        aria-label="Atajos de teclado"
+      >
+        ?
+      </button>
       <button
         class="btn quiet small"
         type="button"
@@ -42,8 +68,13 @@
         <summary class="btn small">Exportar</summary>
         <div class="menu">
           <button type="button" (click)="exportSvg()">
-            SVG a tamaño real<small>Para Inkscape o corte láser</small>
+            SVG a tamaño real<small>Diseño completo en milímetros</small>
           </button>
+          @if ((store.document().layers ?? []).length > 0) {
+            <button type="button" (click)="exportPerLayerSvgs()">
+              Un SVG por lámina<small>Para calcar y cortar cada color</small>
+            </button>
+          }
           <button type="button" (click)="exportJson()">
             JSON<small>Copia de seguridad del diseño</small>
           </button>
@@ -67,6 +98,22 @@
       </p>
     }
 
+    @if (tourStep() !== null) {
+      <aside class="tour-banner" role="region" aria-label="Recorrido guiado">
+        <div class="tour-copy">
+          <strong>{{ tourSteps[tourStep()!].title }}</strong>
+          <p>{{ tourSteps[tourStep()!].body }}</p>
+        </div>
+        <div class="tour-actions">
+          <span class="tour-step">{{ tourStep()! + 1 }} / {{ tourSteps.length }}</span>
+          <button class="btn small quiet" type="button" (click)="closeTour()">Omitir</button>
+          <button class="btn small primary" type="button" (click)="nextTourStep()">
+            {{ tourStep()! + 1 === tourSteps.length ? 'Empezar a diseñar' : 'Siguiente' }}
+          </button>
+        </div>
+      </aside>
+    }
+
     <app-tools class="tools" />
     <app-stage class="stage" />
 
@@ -79,11 +126,19 @@
             [id]="'tab-' + item.id"
             [attr.aria-selected]="tab() === item.id"
             [attr.aria-controls]="'panel-' + item.id"
-            (click)="tab.set(item.id)"
+            (click)="selectTab(item.id)"
           >
             {{ item.label }}
           </button>
         }
+        <button
+          class="sheet-toggle"
+          type="button"
+          (click)="mobileSheetOpen.set(!mobileSheetOpen())"
+          [attr.aria-expanded]="mobileSheetOpen()"
+        >
+          {{ mobileSheetOpen() ? '▼' : '▲' }}
+        </button>
       </div>
       <div
         class="panel"
@@ -122,11 +177,19 @@
           +
         </button>
         <button class="btn quiet small" type="button" (click)="fit()">Ajustar</button>
+        @if (store.selected()) {
+          <button class="btn quiet small" type="button" (click)="zoomToSelection()">
+            Zoom a pieza
+          </button>
+        }
       </div>
-      <span
-        >{{ store.document().shapes.length }} piezas, {{ store.document().width }} ×
-        {{ store.document().height }} mm</span
-      >
+      <span>
+        {{ store.document().shapes.length }} piezas
+        @if ((store.document().layers ?? []).length; as lCount) {
+          · {{ lCount }} láminas
+        }
+        · {{ store.document().width }} × {{ store.document().height }} mm
+      </span>
       <span
         class="inp"
         [attr.data-rating]="inp.rating()"
@@ -142,13 +205,94 @@
       <p class="error-text" role="alert">{{ message }}</p>
       <div class="row">
         <button class="btn" type="button" (click)="load()">Reintentar</button>
-        <a class="btn primary" routerLink="/patrones">Ir a mis patrones</a>
+        <a class="btn primary" routerLink="/patrones">Ir a mis diseños</a>
       </div>
     } @else {
-      <p aria-live="polite">Abriendo el patrón…</p>
+      <p aria-live="polite">Abriendo el diseño…</p>
     }
   </main>
 }
+
+<!-- Paleta de comandos (Ctrl+K) -->
+<dialog #commandsDialog aria-labelledby="cmd-title">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="cmd-title">Paleta de comandos</h2>
+      <button class="btn quiet small" type="button" (click)="closeCommands()">Cerrar</button>
+    </div>
+    <input
+      type="search"
+      class="cmd-search"
+      placeholder="Escribe una acción (ej. Bisturí, simetría, 300 piezas, oficio)…"
+      [ngModel]="commandQuery()"
+      (ngModelChange)="commandQuery.set($event)"
+    />
+    <ul class="cmd-list" role="listbox" aria-label="Acciones disponibles">
+      @for (cmd of commands(); track cmd.id) {
+        <li>
+          <button type="button" (click)="runCommand(cmd)">
+            <span>{{ cmd.label }}</span>
+            @if (cmd.shortcut) {
+              <kbd>{{ cmd.shortcut }}</kbd>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+</dialog>
+
+<!-- Ayuda de atajos de teclado (?) -->
+<dialog #helpDialog aria-labelledby="help-title">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="help-title">Atajos de teclado y gestos</h2>
+      <button class="btn quiet small" type="button" (click)="closeHelp()">Cerrar</button>
+    </div>
+    <dl class="shortcuts-grid">
+      <div>
+        <dt><kbd>Ctrl + K</kbd></dt>
+        <dd>Abrir paleta de comandos</dd>
+      </div>
+      <div>
+        <dt><kbd>?</kbd></dt>
+        <dd>Mostrar esta ayuda de atajos</dd>
+      </div>
+      <div>
+        <dt><kbd>B</kbd></dt>
+        <dd>Activar o salir de la herramienta Bisturí</dd>
+      </div>
+      <div>
+        <dt><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Shift + Z</kbd></dt>
+        <dd>Deshacer / Rehacer (100 pasos)</dd>
+      </div>
+      <div>
+        <dt><kbd>Ctrl + D</kbd></dt>
+        <dd>Duplicar la pieza seleccionada</dd>
+      </div>
+      <div>
+        <dt><kbd>Supr</kbd> / <kbd>Backspace</kbd></dt>
+        <dd>Borrar pieza seleccionada o nodo del Bisturí</dd>
+      </div>
+      <div>
+        <dt><kbd>Shift + Clic</kbd></dt>
+        <dd>Sumar o quitar piezas a la selección múltiple</dd>
+      </div>
+      <div>
+        <dt><kbd>Flechas</kbd> (<kbd>Shift</kbd> = 10 mm)</dt>
+        <dd>Mover la selección con precisión milimétrica</dd>
+      </div>
+      <div>
+        <dt><kbd>Espacio + Arrastrar</kbd> o 2 dedos</dt>
+        <dd>Desplazar la mesa de trabajo</dd>
+      </div>
+      <div>
+        <dt><kbd>Ctrl + Rueda</kbd> o pellizcar</dt>
+        <dd>Acercar o alejar el zoom</dd>
+      </div>
+    </dl>
+  </div>
+</dialog>
 
 <dialog #conflict aria-labelledby="conflict-title">
   <div class="conflict">
@@ -156,7 +300,7 @@
     <p>{{ conflictMessage() }}</p>
     <div class="choices">
       <button class="btn primary" type="button" (click)="saveAsCopy()">
-        Guardar mis cambios como un patrón nuevo
+        Guardar mis cambios como un diseño nuevo
       </button>
       <button class="btn" type="button" (click)="reloadLatest()">
         Descartar mis cambios y abrir la última versión

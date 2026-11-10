@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { PatternVersion, PatronlabApi } from '../../../core/api/patronlab-api';
@@ -20,24 +20,34 @@ import { Thumbnail } from '../../../shared/thumbnail';
           [(ngModel)]="note"
           name="note"
           maxlength="200"
-          placeholder="Hojas más grandes, colores de la foto"
+          placeholder="Colibrí con simetría radial de 6"
           (keydown.enter)="saveRequested.emit(note)"
         />
       </label>
-      <button
-        class="btn small primary"
-        type="button"
-        (click)="saveRequested.emit(note)"
-        [disabled]="!store.dirty() || store.saving()"
-      >
-        {{
-          store.saving()
-            ? 'Guardando…'
-            : store.dirty()
-              ? 'Guardar versión ' + (store.baseVersion() + 1)
-              : 'Sin cambios por guardar'
-        }}
-      </button>
+      <div class="row-actions">
+        <button
+          class="btn small primary"
+          type="button"
+          (click)="saveRequested.emit(note)"
+          [disabled]="!store.dirty() || store.saving()"
+        >
+          {{
+            store.saving()
+              ? 'Guardando…'
+              : store.dirty()
+                ? 'Guardar versión ' + (store.baseVersion() + 1)
+                : 'Sin cambios por guardar'
+          }}
+        </button>
+        <button
+          class="btn small"
+          type="button"
+          (click)="toggleReplay()"
+          [disabled]="store.document().shapes.length === 0"
+        >
+          {{ replaying() ? 'Detener repetición' : '▶ Repetir construcción' }}
+        </button>
+      </div>
     </section>
 
     <section class="block">
@@ -94,8 +104,10 @@ import { Thumbnail } from '../../../shared/thumbnail';
       padding: 1rem;
       border-bottom: 1px solid var(--line);
     }
-    .block > .btn {
-      justify-self: start;
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
     }
     ol {
       list-style: none;
@@ -140,7 +152,7 @@ import { Thumbnail } from '../../../shared/thumbnail';
     .peek {
       width: 100%;
       aspect-ratio: 1;
-      background: var(--mat);
+      background: var(--barniz-wood);
       border-radius: 4px;
       padding: 6px;
     }
@@ -159,9 +171,51 @@ export class Versions {
   readonly peeking = signal<number | null>(null);
   readonly peekDocument = signal<PatternDocument | null>(null);
   readonly error = signal<string | null>(null);
+  readonly replaying = signal(false);
+  private replayTimers: ReturnType<typeof setTimeout>[] = [];
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.stopReplay());
+  }
 
   clearNote(): void {
     this.note = '';
+  }
+
+  toggleReplay(): void {
+    if (this.replaying()) {
+      this.stopReplay();
+      return;
+    }
+    const layers = this.store.document().layers ?? [];
+    if (layers.length > 1) {
+      this.replaying.set(true);
+      for (let i = 1; i <= layers.length; i++) {
+        const timer = setTimeout(
+          () => {
+            if (i < layers.length) {
+              this.store.animatedLayerLimit.set(i);
+            } else {
+              this.stopReplay();
+            }
+          },
+          (i - 1) * 420,
+        );
+        this.replayTimers.push(timer);
+      }
+    } else {
+      this.replaying.set(true);
+      this.store.animatedLayerLimit.set(1);
+      const timer = setTimeout(() => this.stopReplay(), 600);
+      this.replayTimers.push(timer);
+    }
+  }
+
+  private stopReplay(): void {
+    for (const t of this.replayTimers) clearTimeout(t);
+    this.replayTimers = [];
+    this.store.animatedLayerLimit.set(undefined);
+    this.replaying.set(false);
   }
 
   async peek(number: number): Promise<void> {

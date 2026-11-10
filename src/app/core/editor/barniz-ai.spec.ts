@@ -42,4 +42,3 @@ describe('barniz-ai helpers', () => {
     expect(evolved.history.length).toBeGreaterThan(0);
   });
 });
-

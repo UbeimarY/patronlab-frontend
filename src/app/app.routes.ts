@@ -19,9 +19,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/auth.page').then((m) => m.AuthPage),
   },
   {
+    path: 'oficio',
+    title: 'Sobre el oficio del Barniz de Pasto · PatronLab',
+    loadComponent: () => import('./pages/craft/craft.page').then((m) => m.CraftPage),
+  },
+  {
     path: 'patrones',
     canActivate: [signedIn],
-    title: 'Mis patrones · PatronLab',
+    title: 'Mis diseños · PatronLab',
     loadComponent: () => import('./pages/patterns/patterns.page').then((m) => m.PatternsPage),
   },
   {
